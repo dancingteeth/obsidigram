@@ -42,3 +42,11 @@ export interface PublishedResponse {
 	posts: PublishedPost[];
 }
 
+// Frontmatter type for processFrontMatter callback
+export interface FrontMatter {
+	tags?: (string | { tag: string })[];
+	tg_scheduled_time?: string;
+	tg_published_time?: string;
+	[key: string]: unknown;
+}
+

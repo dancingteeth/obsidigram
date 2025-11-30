@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { Bot } from 'grammy';
 import express from 'express';
 import { Storage } from './storage';

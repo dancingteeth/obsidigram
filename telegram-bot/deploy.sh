@@ -1,0 +1,120 @@
+#!/bin/bash
+
+# Obsidigram Bot Deployment Script
+# Deploys the bot to holy-grind server via SSH
+
+set -e
+
+# Configuration
+SERVER="holy-grind"
+REMOTE_DIR="/root/obsidigram"
+LOCAL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$LOCAL_DIR/.." && pwd)"
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+echo -e "${GREEN}🚀 Starting Obsidigram Bot Deployment${NC}"
+echo ""
+
+# Check if .env file exists locally
+if [ ! -f "$LOCAL_DIR/.env" ] && [ ! -f "$LOCAL_DIR/env.example" ]; then
+    echo -e "${RED}❌ Error: No .env file found${NC}"
+    echo "Please create a .env file or copy env.example to .env"
+    echo "Location: $LOCAL_DIR/.env"
+    exit 1
+fi
+
+# Step 1: Build locally (optional, but good for testing)
+echo -e "${YELLOW}📦 Building TypeScript...${NC}"
+cd "$LOCAL_DIR"
+npm run build
+echo -e "${GREEN}✅ Build complete${NC}"
+echo ""
+
+# Step 2: Create remote directory structure
+echo -e "${YELLOW}📁 Setting up remote directory structure...${NC}"
+ssh "$SERVER" "mkdir -p $REMOTE_DIR/data $REMOTE_DIR/logs"
+echo -e "${GREEN}✅ Directory structure created${NC}"
+echo ""
+
+# Step 3: Transfer files
+echo -e "${YELLOW}📤 Transferring files to server...${NC}"
+rsync -avz --delete \
+    --exclude 'node_modules' \
+    --exclude 'dist' \
+    --exclude 'data' \
+    --exclude 'logs' \
+    --exclude '.env' \
+    --exclude '.git' \
+    --exclude '*.log' \
+    "$LOCAL_DIR/" "$SERVER:$REMOTE_DIR/"
+echo -e "${GREEN}✅ Files transferred${NC}"
+echo ""
+
+# Step 4: Transfer .env file (if exists locally)
+if [ -f "$LOCAL_DIR/.env" ]; then
+    echo -e "${YELLOW}🔐 Transferring .env file...${NC}"
+    scp "$LOCAL_DIR/.env" "$SERVER:$REMOTE_DIR/.env"
+    echo -e "${GREEN}✅ .env file transferred${NC}"
+elif [ -f "$LOCAL_DIR/env.example" ]; then
+    echo -e "${YELLOW}⚠️  No .env file found, using env.example as template${NC}"
+    echo "You'll need to create .env on the server manually"
+fi
+echo ""
+
+# Step 5: Install dependencies and build on server
+echo -e "${YELLOW}📥 Installing dependencies on server...${NC}"
+ssh "$SERVER" "cd $REMOTE_DIR && npm ci --only=production"
+echo -e "${GREEN}✅ Dependencies installed${NC}"
+echo ""
+
+echo -e "${YELLOW}🔨 Building on server...${NC}"
+ssh "$SERVER" "cd $REMOTE_DIR && npm run build"
+echo -e "${GREEN}✅ Build complete on server${NC}"
+echo ""
+
+# Step 6: Build and start Docker container
+echo -e "${YELLOW}🐳 Building Docker image...${NC}"
+ssh "$SERVER" "cd $REMOTE_DIR && docker compose build"
+echo -e "${GREEN}✅ Docker image built${NC}"
+echo ""
+
+echo -e "${YELLOW}🚀 Starting container...${NC}"
+ssh "$SERVER" "cd $REMOTE_DIR && docker compose up -d"
+echo -e "${GREEN}✅ Container started${NC}"
+echo ""
+
+# Step 7: Check status
+echo -e "${YELLOW}📊 Checking service status...${NC}"
+ssh "$SERVER" "cd $REMOTE_DIR && docker compose ps"
+echo ""
+
+# Step 8: Show logs (last 20 lines)
+echo -e "${YELLOW}📋 Recent logs:${NC}"
+ssh "$SERVER" "cd $REMOTE_DIR && docker compose logs --tail=20"
+echo ""
+
+# Step 9: Health check
+echo -e "${YELLOW}🏥 Running health check...${NC}"
+sleep 3
+if ssh "$SERVER" "curl -f http://localhost:3001/health > /dev/null 2>&1"; then
+    echo -e "${GREEN}✅ Health check passed${NC}"
+else
+    echo -e "${RED}⚠️  Health check failed - check logs${NC}"
+fi
+echo ""
+
+echo -e "${GREEN}🎉 Deployment complete!${NC}"
+echo ""
+echo "Service is running at: http://149.102.148.156:3001"
+echo ""
+echo "Useful commands:"
+echo "  View logs:    ssh $SERVER 'cd $REMOTE_DIR && docker compose logs -f'"
+echo "  Restart:       ssh $SERVER 'cd $REMOTE_DIR && docker compose restart'"
+echo "  Stop:          ssh $SERVER 'cd $REMOTE_DIR && docker compose down'"
+echo "  Status:        ssh $SERVER 'cd $REMOTE_DIR && docker compose ps'"
+

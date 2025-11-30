@@ -7,7 +7,9 @@ tags:
 
 Telegram bot API server for the Obsidigram Obsidian plugin. Receives scheduled posts from the plugin and publishes them to Telegram at the specified times.
 
-## Setup
+## Quick Start
+
+### Local Development
 
 1. Install dependencies:
 ```bash
@@ -33,10 +35,25 @@ npm run build
 npm start
 ```
 
-Or for development:
+Or for development (auto-reload):
 ```bash
 npm run dev
 ```
+
+## Deployment
+
+### Quick Deploy to Server
+
+```bash
+npm run deploy
+```
+
+Or:
+```bash
+./deploy.sh
+```
+
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions.
 
 ## Environment Variables
 
@@ -136,3 +153,19 @@ Response:
 4. When it's time, the bot sends the message to the configured Telegram chat
 5. The plugin can query `/api/published` to sync published status back to Obsidian
 
+## Project Structure
+
+```
+telegram-bot/
+├── src/
+│   ├── index.ts       # Bot and HTTP server setup
+│   ├── api.ts         # Express API routes
+│   ├── scheduler.ts   # Cron job for posting
+│   ├── storage.ts     # File-based persistence
+│   └── types.ts       # TypeScript types
+├── Dockerfile         # Docker image definition
+├── docker-compose.yml # Docker Compose configuration
+├── deploy.sh          # Deployment script
+├── package.json
+└── tsconfig.json
+```

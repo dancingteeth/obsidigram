@@ -2,6 +2,7 @@ import { Modal, Setting, Notice } from 'obsidian';
 import { TFile } from 'obsidian';
 import type ObsidigramPlugin from '../main';
 import { ApiClient } from './ApiClient';
+import { MarkdownConverter } from './MarkdownConverter';
 import type { ScheduledSlot } from './types';
 
 export class SchedulingModal extends Modal {
@@ -34,8 +35,8 @@ export class SchedulingModal extends Modal {
 		// Show loading state
 		const loadingEl = contentEl.createEl('p', { text: 'Loading schedule...' });
 		
-		// Fetch busy slots
-		const busySlotsResponse = await this.apiClient.getBusySlots();
+		// Fetch busy slots with configured time slots
+		const busySlotsResponse = await this.apiClient.getBusySlots(this.plugin.settings.timeSlots);
 		this.isLoading = false;
 		loadingEl.remove();
 
@@ -168,9 +169,11 @@ export class SchedulingModal extends Modal {
 		// Read file content
 		const content = await this.plugin.app.vault.read(this.file);
 		
-		// Parse markdown to HTML/Telegram format (simplified - you might want to use a markdown parser)
-		// For now, we'll send the raw markdown and let the bot handle conversion
-		const telegramContent = this.convertMarkdownToTelegram(content);
+		// Convert markdown to Telegram HTML format
+		let telegramContent = MarkdownConverter.convertToTelegramHTML(content);
+		
+		// Truncate if too long (Telegram limit is 4096 characters)
+		telegramContent = MarkdownConverter.truncateForTelegram(telegramContent);
 
 		// Get all tags
 		const fileWatcher = this.plugin.fileWatcher;
@@ -199,31 +202,6 @@ export class SchedulingModal extends Modal {
 		}
 	}
 
-	private convertMarkdownToTelegram(markdown: string): string {
-		// Simple markdown to Telegram HTML conversion
-		// Remove YAML frontmatter
-		let content = markdown.replace(/^---\n[\s\S]*?\n---\n/, '');
-		
-		// Convert headers
-		content = content.replace(/^### (.*$)/gim, '<b>$1</b>');
-		content = content.replace(/^## (.*$)/gim, '<b>$1</b>');
-		content = content.replace(/^# (.*$)/gim, '<b>$1</b>');
-		
-		// Convert bold
-		content = content.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
-		
-		// Convert italic
-		content = content.replace(/\*(.*?)\*/g, '<i>$1</i>');
-		
-		// Convert code blocks (simplified)
-		content = content.replace(/```[\s\S]*?```/g, '[code block]');
-		content = content.replace(/`(.*?)`/g, '<code>$1</code>');
-		
-		// Convert links
-		content = content.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
-		
-		return content.trim();
-	}
 
 	onClose(): void {
 		const { contentEl } = this;

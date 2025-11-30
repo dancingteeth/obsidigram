@@ -11,7 +11,7 @@ import { FileWatcher } from './src/FileWatcher';
 import { SchedulingModal } from './src/SchedulingModal';
 import { ObsidigramSettingTab } from './src/SettingsTab';
 import { ApiClient } from './src/ApiClient';
-import type { ObsidigramSettings } from './src/types';
+import type { ObsidigramSettings, FrontMatter } from './src/types';
 import { DEFAULT_SETTINGS } from './src/types';
 
 export default class ObsidigramPlugin extends Plugin {
@@ -21,42 +21,44 @@ export default class ObsidigramPlugin extends Plugin {
 	async onload(): Promise<void> {
 		console.log('[Obsidigram] Loading plugin...');
 
+		// Load settings
 		await this.loadSettings();
 
-		// Initialize file watcher
+		// Initialize components
 		this.fileWatcher = new FileWatcher(this);
-		this.fileWatcher.start();
 
 		// Add settings tab
 		this.addSettingTab(new ObsidigramSettingTab(this.app, this));
+
+		// Add commands
+		this.addCommands();
 
 		// Add ribbon icon for sync
 		this.addRibbonIcon('refresh-cw', 'Sync Telegram Status', async () => {
 			await this.syncPublishedPosts();
 		});
 
-		// Add command for manual sync
-		this.addCommand({
-			id: 'sync-telegram-status',
-			name: 'Sync Telegram Status',
-			callback: async () => {
-				await this.syncPublishedPosts();
-			}
-		});
+		// Show welcome notice
+		new Notice('Obsidigram loaded');
+		console.log('[Obsidigram] Plugin loaded successfully');
 
-		// Sync on startup
+		// Wait for Obsidian's vault to be fully indexed before starting watchers
 		this.app.workspace.onLayoutReady(() => {
-			// Delay sync to avoid blocking startup
+			console.log('[Obsidigram] Workspace ready, starting file watcher...');
+			// Additional delay to ensure vault index is complete
 			setTimeout(() => {
-				this.syncPublishedPosts();
-			}, 2000);
+				this.fileWatcher.start();
+				// Sync published posts after a short delay
+				setTimeout(() => {
+					this.syncPublishedPosts();
+				}, 1000);
+			}, 1000);
 		});
-
-		console.log('[Obsidigram] Plugin loaded');
 	}
 
 	onunload(): void {
-		console.log('[Obsidigram] Plugin unloaded');
+		console.log('[Obsidigram] Unloading plugin...');
+		// Cleanup is handled automatically by Obsidian
 	}
 
 	async loadSettings(): Promise<void> {
@@ -67,46 +69,93 @@ export default class ObsidigramPlugin extends Plugin {
 		await this.saveData(this.settings);
 	}
 
+	/**
+	 * Add plugin commands
+	 */
+	private addCommands(): void {
+		// Sync command
+		this.addCommand({
+			id: 'sync-telegram-status',
+			name: 'Sync Telegram Status',
+			callback: async () => {
+				await this.syncPublishedPosts();
+			}
+		});
+
+		// Open settings command
+		this.addCommand({
+			id: 'open-obsidigram-settings',
+			name: 'Open Obsidigram Settings',
+			callback: () => {
+				// @ts-ignore - accessing private API
+				this.app.setting.open();
+				// @ts-ignore
+				this.app.setting.openTabById('obsidigram');
+			}
+		});
+	}
+
+	/**
+	 * Open scheduling modal for a file
+	 */
 	openSchedulingModal(file: TFile, category: string): void {
 		// Check if modal is already open for this file
+		// Using a simple check - could be improved with modal tracking
 		const existingModal = (this.app as any).workspace.getModal();
 		if (existingModal instanceof SchedulingModal) {
 			// Don't open duplicate modals
+			console.log('[Obsidigram] Scheduling modal already open, skipping');
 			return;
 		}
 
 		new SchedulingModal(this, file, category).open();
 	}
 
+	/**
+	 * Update file tags after scheduling
+	 */
 	async updateFileTags(file: TFile, scheduledTime: string): Promise<void> {
 		try {
-			await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
-				// Remove tg_unpublished
-				if (Array.isArray(frontmatter.tags)) {
-					frontmatter.tags = frontmatter.tags.filter((tag: string) => 
-						tag !== 'tg_unpublished' && tag !== '#tg_unpublished'
-					);
-				}
-
-				// Add tg_scheduled
+			await this.app.fileManager.processFrontMatter(file, (frontmatter: FrontMatter) => {
+				// Ensure tags array exists
 				if (!Array.isArray(frontmatter.tags)) {
 					frontmatter.tags = [];
 				}
-				
-				if (!frontmatter.tags.includes('tg_scheduled') && !frontmatter.tags.includes('#tg_scheduled')) {
+
+				// Remove tg_unpublished
+				frontmatter.tags = frontmatter.tags.filter((tag) => {
+					const tagStr = typeof tag === 'string' ? tag : String(tag);
+					return tagStr !== 'tg_unpublished' && tagStr !== '#tg_unpublished';
+				});
+
+				// Add tg_scheduled if not already present
+				const hasScheduled = frontmatter.tags.some((tag) => {
+					const tagStr = typeof tag === 'string' ? tag : String(tag);
+					return tagStr === 'tg_scheduled' || tagStr === '#tg_scheduled';
+				});
+
+				if (!hasScheduled) {
 					frontmatter.tags.push('tg_scheduled');
 				}
 
 				// Add scheduled time
 				frontmatter.tg_scheduled_time = scheduledTime;
 			});
+
+			console.log(`[Obsidigram] Updated tags for ${file.path}`);
 		} catch (error) {
-			console.error('[Obsidigram] Failed to update file tags:', error);
-			new Notice('Failed to update file tags');
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			console.error(`[Obsidigram] Failed to update file tags for ${file.path}:`, errorMessage);
+			new Notice(`Failed to update file tags: ${errorMessage}`);
 		}
 	}
 
+	/**
+	 * Sync published posts from bot to local files
+	 */
 	async syncPublishedPosts(): Promise<void> {
+		console.log('[Obsidigram] Syncing published posts...');
+		
 		const apiClient = new ApiClient(this.settings.botApiUrl);
 		const response = await apiClient.getPublishedPosts();
 
@@ -114,43 +163,67 @@ export default class ObsidigramPlugin extends Plugin {
 			return; // Error already shown by ApiClient
 		}
 
+		if (response.posts.length === 0) {
+			console.log('[Obsidigram] No published posts to sync');
+			return;
+		}
+
 		let updatedCount = 0;
+		let notFoundCount = 0;
+		let errorCount = 0;
 
 		for (const post of response.posts) {
 			// Find file by file_id (path)
 			const file = this.app.vault.getAbstractFileByPath(post.file_id);
-			if (file instanceof TFile) {
-				try {
-					await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
-						// Remove tg_scheduled
-						if (Array.isArray(frontmatter.tags)) {
-							frontmatter.tags = frontmatter.tags.filter((tag: string) => 
-								tag !== 'tg_scheduled' && tag !== '#tg_scheduled'
-							);
-						}
+			if (!(file instanceof TFile)) {
+				notFoundCount++;
+				console.log(`[Obsidigram] File not found: ${post.file_id}`);
+				continue;
+			}
 
-						// Add tg_published
-						if (!Array.isArray(frontmatter.tags)) {
-							frontmatter.tags = [];
-						}
-						
-						if (!frontmatter.tags.includes('tg_published') && !frontmatter.tags.includes('#tg_published')) {
-							frontmatter.tags.push('tg_published');
-						}
+			try {
+				await this.app.fileManager.processFrontMatter(file, (frontmatter: FrontMatter) => {
+					// Ensure tags array exists
+					if (!Array.isArray(frontmatter.tags)) {
+						frontmatter.tags = [];
+					}
 
-						// Update published time
-						frontmatter.tg_published_time = post.published_at;
+					// Remove tg_scheduled
+					frontmatter.tags = frontmatter.tags.filter((tag) => {
+						const tagStr = typeof tag === 'string' ? tag : String(tag);
+						return tagStr !== 'tg_scheduled' && tagStr !== '#tg_scheduled';
 					});
 
-					updatedCount++;
-				} catch (error) {
-					console.error(`[Obsidigram] Failed to update file ${file.path}:`, error);
-				}
+					// Add tg_published if not already present
+					const hasPublished = frontmatter.tags.some((tag) => {
+						const tagStr = typeof tag === 'string' ? tag : String(tag);
+						return tagStr === 'tg_published' || tagStr === '#tg_published';
+					});
+
+					if (!hasPublished) {
+						frontmatter.tags.push('tg_published');
+					}
+
+					// Update published time
+					frontmatter.tg_published_time = post.published_at;
+				});
+
+				updatedCount++;
+				console.log(`[Obsidigram] Updated ${file.path} to published`);
+			} catch (error) {
+				errorCount++;
+				const errorMessage = error instanceof Error ? error.message : String(error);
+				console.error(`[Obsidigram] Failed to update file ${file.path}:`, errorMessage);
 			}
 		}
 
+		// Show summary notice
 		if (updatedCount > 0) {
-			new Notice(`Synced ${updatedCount} published post(s)`);
+			const summary = `Synced ${updatedCount} published post(s)${notFoundCount > 0 ? `, ${notFoundCount} not found` : ''}${errorCount > 0 ? `, ${errorCount} errors` : ''}`;
+			new Notice(summary);
+			console.log(`[Obsidigram] Sync complete: ${summary}`);
+		} else if (notFoundCount > 0 || errorCount > 0) {
+			new Notice(`Sync complete: ${notFoundCount} not found, ${errorCount} errors`);
 		}
 	}
 }

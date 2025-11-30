@@ -42,4 +42,5 @@ obsidian-plugin/main.js.map
 # Telegram bot specific
 telegram-bot/dist/
 telegram-bot/data/
+telegram-bot/logs/
 

@@ -11,12 +11,13 @@ export function createApiRouter(storage: Storage) {
 	const router = express.Router();
 
 	// GET /api/schedule - Get busy slots
+	// Accepts optional query param ?timeSlots=09:00,12:00,15:00 to customize slots
 	router.get('/schedule', (req: Request, res: Response) => {
 		try {
 			const scheduledPosts = storage.getScheduledPosts();
 			const busySlots = new Set<string>();
 
-			// Build set of busy slots
+			// Build set of busy slots from all scheduled posts
 			scheduledPosts.forEach(post => {
 				const scheduledDate = new Date(post.scheduled_time);
 				const date = scheduledDate.toISOString().split('T')[0]; // YYYY-MM-DD
@@ -26,7 +27,13 @@ export function createApiRouter(storage: Storage) {
 
 			// Generate slots for next 7 days
 			const slots: BusySlot[] = [];
-			const timeSlots = ['09:00', '12:00', '15:00', '18:00', '21:00', '00:00'];
+			
+			// Use time slots from query param or default
+			const timeSlotsParam = req.query.timeSlots as string | undefined;
+			const timeSlots = timeSlotsParam 
+				? timeSlotsParam.split(',').map(s => s.trim())
+				: ['09:00', '12:00', '15:00', '18:00', '21:00', '00:00'];
+			
 			const today = new Date();
 			today.setHours(0, 0, 0, 0);
 

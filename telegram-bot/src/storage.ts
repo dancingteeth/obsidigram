@@ -57,7 +57,7 @@ export class Storage {
 		return Array.from(this.posts.values()).filter(p => p.status === 'scheduled');
 	}
 
-	getPublishedPosts(): ScheduledPost[] {
+	getPublishedPosts(): { file_id: string; published_at: string }[] {
 		return Array.from(this.posts.values())
 			.filter(p => p.status === 'published' && p.published_at)
 			.map(p => ({

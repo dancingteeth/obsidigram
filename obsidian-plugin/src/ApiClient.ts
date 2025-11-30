@@ -13,9 +13,14 @@ export class ApiClient {
 		this.baseUrl = baseUrl.replace(/\/$/, ''); // Remove trailing slash
 	}
 
-	async getBusySlots(): Promise<BusySlotsResponse | null> {
+	async getBusySlots(timeSlots?: string[]): Promise<BusySlotsResponse | null> {
 		try {
-			const response = await fetch(`${this.baseUrl}/api/schedule`, {
+			let url = `${this.baseUrl}/api/schedule`;
+			if (timeSlots && timeSlots.length > 0) {
+				url += `?timeSlots=${encodeURIComponent(timeSlots.join(','))}`;
+			}
+			
+			const response = await fetch(url, {
 				method: 'GET',
 				headers: {
 					'Content-Type': 'application/json',
