@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { Bot } from 'grammy';
 import express from 'express';
+import cors from 'cors';
 import { Storage } from './storage.js';
 import { Scheduler } from './scheduler.js';
 import { createApiRouter } from './api.js';
@@ -57,6 +58,15 @@ async function main() {
 
 	// Create Express app for API
 	const app = express();
+	
+	// Enable CORS for Obsidian plugin (Electron app)
+	app.use(cors({
+		origin: ['app://obsidian.md', 'capacitor://localhost', 'http://localhost:*'],
+		credentials: true,
+		methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+		allowedHeaders: ['Content-Type', 'Authorization']
+	}));
+	
 	app.use(express.json());
 	app.use('/api', createApiRouter(storage));
 
