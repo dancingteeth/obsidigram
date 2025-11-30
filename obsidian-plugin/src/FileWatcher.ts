@@ -17,9 +17,12 @@ export class FileWatcher {
 	}
 
 	start(): void {
+		console.log('[Obsidigram] FileWatcher starting...');
+		
 		// Watch for file modifications
 		this.plugin.registerEvent(
 			this.plugin.app.vault.on('modify', (file) => {
+				console.log(`[Obsidigram] vault.modify event: ${file.path}`);
 				if (file instanceof TFile && file.extension === 'md') {
 					this.debouncedCheck(file);
 				}
@@ -29,11 +32,14 @@ export class FileWatcher {
 		// Watch for metadata changes (tags in frontmatter)
 		this.plugin.registerEvent(
 			this.plugin.app.metadataCache.on('changed', (file) => {
+				console.log(`[Obsidigram] metadataCache.changed event: ${file.path}`);
 				if (file instanceof TFile && file.extension === 'md') {
 					this.debouncedCheck(file);
 				}
 			})
 		);
+		
+		console.log('[Obsidigram] FileWatcher started, listening for vault.modify and metadataCache.changed events');
 	}
 
 	private debouncedCheck(file: TFile): void {
@@ -49,42 +55,56 @@ export class FileWatcher {
 	private async checkFile(file: TFile): Promise<void> {
 		const validation = this.validateFile(file);
 		
+		console.log(`[Obsidigram] checkFile validation result: isValid=${validation.isValid}, hasScheduled=${validation.hasScheduled}, category=${validation.category}`);
+		
 		if (validation.isValid && !validation.hasScheduled) {
 			// File is ready to be scheduled
 			const cache = this.plugin.app.metadataCache.getFileCache(file);
+			console.log(`[Obsidigram] File is valid and not scheduled, cache exists: ${!!cache}`);
 			if (cache) {
 				// Open scheduling modal
+				console.log(`[Obsidigram] Opening scheduling modal for: ${file.path}, category: ${validation.category}`);
 				this.plugin.openSchedulingModal(file, validation.category!);
 			}
 		} else if (validation.hasScheduled) {
+			console.log(`[Obsidigram] File already scheduled, skipping modal`);
 			// File is already scheduled - check if user wants to reschedule
 			// This will be handled by the modal when user tries to edit
+		} else {
+			console.log(`[Obsidigram] File not valid for scheduling`);
 		}
 	}
 
 	validateFile(file: TFile): FileValidationResult {
 		const cache = this.plugin.app.metadataCache.getFileCache(file);
 		if (!cache) {
+			console.log(`[Obsidigram] No cache for file: ${file.path}`);
 			return { isValid: false };
 		}
 
-		// Check tags in frontmatter
+		// Check tags in frontmatter (YAML properties)
 		const frontmatterTags = cache.frontmatter?.tags || [];
 		const frontmatterTagStrings = Array.isArray(frontmatterTags) 
 			? frontmatterTags.map(t => typeof t === 'string' ? t : t.tag || String(t))
 			: [];
 
-		// Check tags in body (from cache.tags)
+		// Check tags in body (inline #tags from cache.tags)
 		const bodyTags = cache.tags?.map(t => t.tag) || [];
 		
-		// Combine all tags
+		// Combine all tags and normalize (remove # prefix for consistent comparison)
 		const allTags = [...frontmatterTagStrings, ...bodyTags];
+		const normalizedTags = allTags.map(t => t.replace(/^#/, ''));
+		
+		console.log(`[Obsidigram] File: ${file.path}`);
+		console.log(`[Obsidigram] Frontmatter tags: ${JSON.stringify(frontmatterTagStrings)}`);
+		console.log(`[Obsidigram] Body tags: ${JSON.stringify(bodyTags)}`);
+		console.log(`[Obsidigram] Normalized tags: ${JSON.stringify(normalizedTags)}`);
 
-		// Check for required status tags
-		const hasUnpublished = allTags.some(t => t === 'tg_unpublished' || t === '#tg_unpublished');
-		const hasReady = allTags.some(t => t === 'tg_ready' || t === '#tg_ready');
-		const hasScheduled = allTags.some(t => t === 'tg_scheduled' || t === '#tg_scheduled');
-		const hasPublished = allTags.some(t => t === 'tg_published' || t === '#tg_published');
+		// Check for required status tags (using normalized tags without #)
+		const hasUnpublished = normalizedTags.some(t => t === 'tg_unpublished');
+		const hasReady = normalizedTags.some(t => t === 'tg_ready');
+		const hasScheduled = normalizedTags.some(t => t === 'tg_scheduled');
+		const hasPublished = normalizedTags.some(t => t === 'tg_published');
 
 		// Must have both #tg_unpublished AND #tg_ready
 		if (!hasUnpublished || !hasReady) {
@@ -106,17 +126,17 @@ export class FileWatcher {
 			'tg_developer_ecosystem'
 		];
 
-		const categoryTag = allTags.find(t => {
-			const cleanTag = t.replace(/^#/, ''); // Remove leading #
-			return categoryTags.includes(cleanTag);
-		});
+		const categoryTag = normalizedTags.find(t => categoryTags.includes(t));
+		
+		console.log(`[Obsidigram] hasReady: ${hasReady}, hasUnpublished: ${hasUnpublished}, hasScheduled: ${hasScheduled}, categoryTag: ${categoryTag}`);
 
 		if (!categoryTag) {
+			console.log(`[Obsidigram] No category tag found in: ${JSON.stringify(normalizedTags)}`);
 			return { isValid: false };
 		}
 
-		// Extract category name (remove #tg_ prefix)
-		const category = categoryTag.replace(/^#?tg_/, '');
+		// Extract category name (remove tg_ prefix)
+		const category = categoryTag.replace(/^tg_/, '');
 
 		return {
 			isValid: true,

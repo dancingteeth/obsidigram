@@ -15,6 +15,7 @@ export class SchedulingModal extends Modal {
 	private selectedTime: string | null = null;
 	private isLoading: boolean = true;
 	public onCloseCallback?: () => void;
+	private submitButton: HTMLButtonElement | null = null;
 
 	constructor(plugin: ObsidigramPlugin, file: TFile, category: string) {
 		super(plugin.app);
@@ -98,21 +99,29 @@ export class SchedulingModal extends Modal {
 
 		// Add submit button
 		const buttonContainer = container.createDiv('obsidigram-button-container');
-		new Setting(buttonContainer)
-			.addButton(btn => btn
-				.setButtonText('Schedule')
-				.setCta()
-				.setDisabled(!this.selectedDate || !this.selectedTime)
-				.onClick(() => {
-					if (this.selectedDate && this.selectedTime) {
-						this.submitSchedule();
-					}
-				}))
-			.addButton(btn => btn
-				.setButtonText('Cancel')
-				.onClick(() => {
-					this.close();
-				}));
+		
+		// Create Schedule button manually for better control
+		this.submitButton = buttonContainer.createEl('button', {
+			text: 'Schedule',
+			cls: 'mod-cta'
+		});
+		this.submitButton.disabled = true;
+		this.submitButton.addEventListener('click', async (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			console.log('[Obsidigram] Schedule button clicked!');
+			if (this.selectedDate && this.selectedTime) {
+				await this.submitSchedule();
+			} else {
+				console.log('[Obsidigram] No slot selected');
+			}
+		});
+		
+		// Create Cancel button
+		const cancelButton = buttonContainer.createEl('button', { text: 'Cancel' });
+		cancelButton.addEventListener('click', () => {
+			this.close();
+		});
 	}
 
 	private getNext7Days(): string[] {
@@ -130,12 +139,13 @@ export class SchedulingModal extends Modal {
 	}
 
 	private selectSlot(date: string, time: string): void {
+		console.log(`[Obsidigram] selectSlot called: ${date} ${time}`);
+		
 		// Clear previous selection
 		const prevSelected = this.contentEl.querySelectorAll('.obsidigram-slot-selected');
 		prevSelected.forEach(el => el.classList.remove('obsidigram-slot-selected'));
 
 		// Find and highlight new selection
-		const slotKey = `${date}_${time}`;
 		const slots = this.contentEl.querySelectorAll('.obsidigram-slot');
 		slots.forEach(slot => {
 			const slotDate = slot.getAttribute('data-date');
@@ -148,18 +158,24 @@ export class SchedulingModal extends Modal {
 		this.selectedDate = date;
 		this.selectedTime = time;
 
-		// Enable submit button
-		const submitBtn = this.contentEl.querySelector('.mod-cta') as HTMLButtonElement;
-		if (submitBtn) {
-			submitBtn.disabled = false;
+		// Enable submit button using stored reference
+		if (this.submitButton) {
+			this.submitButton.disabled = false;
+			console.log(`[Obsidigram] Submit button enabled via stored reference`);
+		} else {
+			console.log(`[Obsidigram] WARNING: submitButton reference is null`);
 		}
 	}
 
 	private async submitSchedule(): Promise<void> {
+		console.log('[Obsidigram] submitSchedule called');
+		
 		if (!this.selectedDate || !this.selectedTime) {
 			new Notice('Please select a time slot');
 			return;
 		}
+
+		console.log(`[Obsidigram] Selected: ${this.selectedDate} ${this.selectedTime}`);
 
 		// Build ISO datetime string
 		const [hours, minutes] = this.selectedTime.split(':').map(Number);
@@ -167,11 +183,15 @@ export class SchedulingModal extends Modal {
 		scheduledDate.setHours(hours, minutes, 0, 0);
 		const scheduledTime = scheduledDate.toISOString();
 
+		console.log(`[Obsidigram] Scheduled time ISO: ${scheduledTime}`);
+
 		// Read file content
 		const content = await this.plugin.app.vault.read(this.file);
+		console.log(`[Obsidigram] File content length: ${content.length}`);
 		
 		// Convert markdown to Telegram HTML format
 		let telegramContent = MarkdownConverter.convertToTelegramHTML(content);
+		console.log(`[Obsidigram] Telegram content length: ${telegramContent.length}`);
 		
 		// Truncate if too long (Telegram limit is 4096 characters)
 		telegramContent = MarkdownConverter.truncateForTelegram(telegramContent);
@@ -182,24 +202,34 @@ export class SchedulingModal extends Modal {
 		const contentTags = allTags.filter(t => 
 			!t.startsWith('tg_') && !t.startsWith('#tg_')
 		);
+		console.log(`[Obsidigram] Content tags: ${JSON.stringify(contentTags)}`);
 
 		// Send schedule request
-		const response = await this.apiClient.schedulePost({
-			action: 'schedule',
-			file_id: this.file.path,
-			content: telegramContent,
-			scheduled_time: scheduledTime,
-			category: this.category,
-			tags: contentTags
-		});
+		console.log(`[Obsidigram] Sending schedule request to API: ${this.plugin.settings.botApiUrl}`);
+		try {
+			const response = await this.apiClient.schedulePost({
+				action: 'schedule',
+				file_id: this.file.path,
+				content: telegramContent,
+				scheduled_time: scheduledTime,
+				category: this.category,
+				tags: contentTags
+			});
 
-		if (response && response.success) {
-			// Update file tags
-			await this.plugin.updateFileTags(this.file, scheduledTime);
-			new Notice('Post scheduled successfully!');
-			this.close();
-		} else {
-			new Notice('Failed to schedule post. Bot unreachable.');
+			console.log(`[Obsidigram] API response:`, response);
+
+			if (response && response.success) {
+				// Update file tags
+				await this.plugin.updateFileTags(this.file, scheduledTime);
+				new Notice('Post scheduled successfully!');
+				this.close();
+			} else {
+				console.error('[Obsidigram] Schedule failed, response:', response);
+				new Notice('Failed to schedule post. Bot unreachable.');
+			}
+		} catch (error) {
+			console.error('[Obsidigram] Error scheduling post:', error);
+			new Notice(`Failed to schedule post: ${error}`);
 		}
 	}
 

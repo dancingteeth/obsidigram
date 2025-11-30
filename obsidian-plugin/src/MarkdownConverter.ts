@@ -17,6 +17,12 @@ export class MarkdownConverter {
 		// Remove YAML frontmatter
 		content = content.replace(/^---\n[\s\S]*?\n---\n/, '');
 
+		// Remove internal #tg_* tags (tg_ready, tg_unpublished, tg_scheduled, tg_published, etc.)
+		content = content.replace(/#tg_\w+\s*/g, '');
+
+		// Clean up empty lines at the start
+		content = content.replace(/^\s*\n+/, '');
+
 		// Escape HTML entities first (but preserve our tags)
 		// We'll escape &, <, > that are not part of our tags
 		content = this.escapeHTML(content);
@@ -41,12 +47,15 @@ export class MarkdownConverter {
 
 		// Convert bold (**text** or __text__)
 		content = content.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
-		content = content.replace(/__([^_]+)__/g, '<b>$1</b>');
+		// Double underscore bold - only match when surrounded by whitespace or punctuation
+		content = content.replace(/(?<=^|[\s\p{P}])__([^_]+)__(?=$|[\s\p{P}])/gu, '<b>$1</b>');
 
 		// Convert italic (*text* or _text_)
-		// Be careful not to match bold markers
+		// Be careful not to match bold markers or underscores in hashtags/words
 		content = content.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<i>$1</i>');
-		content = content.replace(/(?<!_)_([^_]+)_(?!_)/g, '<i>$1</i>');
+		// Single underscore italic - only match when surrounded by whitespace or punctuation
+		// This prevents matching underscores in hashtags like #tg_ready
+		content = content.replace(/(?<=^|[\s\p{P}])_([^_]+)_(?=$|[\s\p{P}])/gu, '<i>$1</i>');
 
 		// Convert strikethrough
 		content = content.replace(/~~([^~]+)~~/g, '<s>$1</s>');
