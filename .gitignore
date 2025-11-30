@@ -1,0 +1,45 @@
+# Environment files
+.env
+.env.*
+!.env.example
+env.example
+*.env
+
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs
+dist/
+**/dist/
+*.js
+*.js.map
+!**/main.js
+!**/main.js.map
+
+# Data and logs
+data/
+**/data/
+*.log
+**/*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Obsidian plugin specific
+obsidian-plugin/main.js
+obsidian-plugin/main.js.map
+
+# Telegram bot specific
+telegram-bot/dist/
+telegram-bot/data/
+

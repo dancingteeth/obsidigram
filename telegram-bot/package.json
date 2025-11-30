@@ -1,0 +1,33 @@
+{
+	"name": "obsidigram-bot",
+	"version": "0.1.0",
+	"description": "Telegram bot API server for Obsidigram plugin",
+	"main": "dist/index.js",
+	"type": "module",
+	"scripts": {
+		"dev": "tsx watch src/index.ts",
+		"build": "tsc",
+		"start": "node dist/index.js"
+	},
+	"keywords": [
+		"telegram",
+		"bot",
+		"grammy",
+		"scheduler"
+	],
+	"author": "dancingteeth",
+	"license": "MIT",
+	"dependencies": {
+		"grammy": "^1.21.0",
+		"express": "^4.18.2",
+		"node-cron": "^3.0.3"
+	},
+	"devDependencies": {
+		"@types/express": "^4.17.21",
+		"@types/node": "^20.10.0",
+		"@types/node-cron": "^3.0.11",
+		"tsx": "^4.7.0",
+		"typescript": "^5.3.3"
+	}
+}
+

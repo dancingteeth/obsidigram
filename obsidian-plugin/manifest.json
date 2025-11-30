@@ -1,0 +1,11 @@
+{
+	"id": "obsidigram",
+	"name": "Obsidigram",
+	"version": "0.1.0",
+	"minAppVersion": "1.0.0",
+	"description": "Turn Obsidian into a headless CMS for Telegram. Monitor markdown files, schedule posts, and sync status.",
+	"author": "dancingteeth",
+	"authorUrl": "https://github.com/dancingteeth",
+	"isDesktopOnly": true
+}
+
