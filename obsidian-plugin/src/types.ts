@@ -23,10 +23,24 @@ export interface ScheduleRequest {
 	tags: string[];
 }
 
+export interface PublishRequest {
+	action: "publish";
+	file_id: string;
+	content: string;
+	category: string;
+	tags: string[];
+}
+
 export interface ScheduleResponse {
 	success: boolean;
 	message?: string;
 	scheduled_id?: string;
+}
+
+export interface PublishResponse {
+	success: boolean;
+	message?: string;
+	message_id?: number;
 }
 
 export interface BusySlotsResponse {

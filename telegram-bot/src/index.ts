@@ -24,19 +24,228 @@ async function main() {
 	// Initialize bot (BOT_TOKEN is guaranteed to be defined after the check above)
 	const bot = new Bot(BOT_TOKEN as string);
 
+	// Initialize scheduler early so we can use it in commands
+	const scheduler = new Scheduler(bot, storage);
+
 	// Basic bot commands
 	bot.command('start', async (ctx) => {
-		await ctx.reply('Hello! I am the Obsidigram bot. I receive scheduled posts from your Obsidian plugin.');
+		await ctx.reply(
+			'👋 Hello! I am the <b>Obsidigram</b> bot.\n\n' +
+			'I receive scheduled posts from your Obsidian plugin and publish them to Telegram at the scheduled time.\n\n' +
+			'<b>Commands:</b>\n' +
+			'/schedule - View current schedule with post previews\n' +
+			'/post - Publish a post immediately\n' +
+			'/cancel - Cancel a specific scheduled post\n' +
+			'/status - View bot stats\n' +
+			'/clear - Delete all scheduled posts',
+			{ parse_mode: 'HTML' }
+		);
+	});
+
+	bot.command('schedule', async (ctx) => {
+		const schedule = scheduler.getScheduleForTelegram();
+		
+		// Send header first
+		await ctx.reply(schedule.header, { parse_mode: 'HTML' });
+		
+		// Send each post as a separate message showing exactly how it will look
+		for (const post of schedule.posts) {
+			// Small delay to prevent rate limiting
+			await new Promise(resolve => setTimeout(resolve, 500));
+			
+			// Send the time header
+			await ctx.reply(post.time, { parse_mode: 'HTML' });
+			
+			// Small delay
+			await new Promise(resolve => setTimeout(resolve, 300));
+			
+			// Try to send the actual post content with HTML formatting
+			// If HTML parsing fails, send as plain text with error note
+			try {
+				await ctx.reply(post.content, { parse_mode: 'HTML' });
+			} catch (error: any) {
+				// HTML parsing failed - send as plain text
+				const plainContent = post.content.replace(/<[^>]+>/g, '');
+				await ctx.reply(
+					`⚠️ <b>HTML parsing error</b> - showing plain text:\n\n${plainContent}\n\n` +
+					`<i>Error: ${error?.message || 'Unknown error'}</i>`,
+					{ parse_mode: 'HTML' }
+				);
+			}
+		}
 	});
 
 	bot.command('status', async (ctx) => {
 		const scheduled = storage.getScheduledPosts().length;
 		const published = storage.getPublishedPosts().length;
 		await ctx.reply(
-			`📊 Bot Status:\n\n` +
-			`Scheduled posts: ${scheduled}\n` +
-			`Published posts: ${published}`
+			`📊 <b>Bot Status</b>\n\n` +
+			`📬 Scheduled posts: ${scheduled}\n` +
+			`✅ Published posts: ${published}`,
+			{ parse_mode: 'HTML' }
 		);
+	});
+
+	// Clear all scheduled posts
+	bot.command('clear', async (ctx) => {
+		const scheduledPosts = storage.getScheduledPosts();
+		const count = scheduledPosts.length;
+		
+		if (count === 0) {
+			await ctx.reply('📭 No scheduled posts to clear.');
+			return;
+		}
+
+		// Delete all scheduled posts
+		for (const post of scheduledPosts) {
+			storage.deletePost(post.id);
+		}
+
+		await ctx.reply(
+			`🗑️ <b>Cleared ${count} scheduled post(s)</b>\n\n` +
+			`You can now reschedule from Obsidian.`,
+			{ parse_mode: 'HTML' }
+		);
+	});
+
+	// Cancel a specific post by number (from /schedule list)
+	bot.command('cancel', async (ctx) => {
+		const scheduledPosts = storage.getScheduledPosts();
+		
+		if (scheduledPosts.length === 0) {
+			await ctx.reply('📭 No scheduled posts to cancel.');
+			return;
+		}
+
+		// Sort by scheduled time (same order as /schedule)
+		const sortedPosts = [...scheduledPosts].sort((a, b) => 
+			new Date(a.scheduled_time).getTime() - new Date(b.scheduled_time).getTime()
+		);
+
+		// Get the number from command argument
+		const args = ctx.message?.text?.split(' ').slice(1) || [];
+		const postNumber = parseInt(args[0]);
+
+		if (!postNumber || isNaN(postNumber) || postNumber < 1 || postNumber > sortedPosts.length) {
+			// Show list of posts with numbers
+			let message = '📋 <b>Select a post to cancel:</b>\n\n';
+			sortedPosts.forEach((post, index) => {
+				const scheduledTime = new Date(post.scheduled_time);
+				const timeStr = scheduledTime.toLocaleString('en-US', {
+					weekday: 'short',
+					month: 'short',
+					day: 'numeric',
+					hour: '2-digit',
+					minute: '2-digit',
+					hour12: false
+				});
+				message += `<b>${index + 1}.</b> ${post.file_id}\n    ⏰ ${timeStr}\n\n`;
+			});
+			message += `\nUse <code>/cancel [number]</code> to cancel a post.\nExample: <code>/cancel 1</code>`;
+			
+			await ctx.reply(message, { parse_mode: 'HTML' });
+			return;
+		}
+
+		// Cancel the selected post
+		const postToCancel = sortedPosts[postNumber - 1];
+		storage.deletePost(postToCancel.id);
+
+		const scheduledTime = new Date(postToCancel.scheduled_time);
+		const timeStr = scheduledTime.toLocaleString('en-US', {
+			weekday: 'short',
+			month: 'short',
+			day: 'numeric',
+			hour: '2-digit',
+			minute: '2-digit',
+			hour12: false
+		});
+
+		await ctx.reply(
+			`✅ <b>Post cancelled</b>\n\n` +
+			`📁 ${postToCancel.file_id}\n` +
+			`⏰ Was scheduled for: ${timeStr}\n\n` +
+			`The time slot is now free for new posts.`,
+			{ parse_mode: 'HTML' }
+		);
+
+		console.log(`[Bot] Post cancelled: ${postToCancel.id} (${postToCancel.file_id})`);
+	});
+
+	// Publish a post immediately
+	bot.command('post', async (ctx) => {
+		const scheduledPosts = storage.getScheduledPosts();
+		
+		if (scheduledPosts.length === 0) {
+			await ctx.reply('📭 No scheduled posts to publish.');
+			return;
+		}
+
+		// Sort by scheduled time (same order as /schedule)
+		const sortedPosts = [...scheduledPosts].sort((a, b) => 
+			new Date(a.scheduled_time).getTime() - new Date(b.scheduled_time).getTime()
+		);
+
+		// Get the number from command argument
+		const args = ctx.message?.text?.split(' ').slice(1) || [];
+		const postNumber = parseInt(args[0]);
+
+		if (!postNumber || isNaN(postNumber) || postNumber < 1 || postNumber > sortedPosts.length) {
+			// Show list of posts with numbers
+			let message = '📤 <b>Select a post to publish now:</b>\n\n';
+			sortedPosts.forEach((post, index) => {
+				const scheduledTime = new Date(post.scheduled_time);
+				const timeStr = scheduledTime.toLocaleString('en-US', {
+					weekday: 'short',
+					month: 'short',
+					day: 'numeric',
+					hour: '2-digit',
+					minute: '2-digit',
+					hour12: false
+				});
+				// Clean preview
+				const preview = post.content.replace(/<[^>]+>/g, '').substring(0, 50).replace(/\n/g, ' ');
+				message += `<b>${index + 1}.</b> ${post.file_id}\n    ⏰ ${timeStr}\n    📝 ${preview}...\n\n`;
+			});
+			message += `\nUse <code>/post [number]</code> to publish immediately.\nExample: <code>/post 1</code>`;
+			
+			await ctx.reply(message, { parse_mode: 'HTML' });
+			return;
+		}
+
+		// Publish the selected post immediately
+		const postToPublish = sortedPosts[postNumber - 1];
+		
+		await ctx.reply(`⏳ Publishing post #${postNumber}...`);
+
+		const result = await scheduler.publishPostNow(postToPublish);
+
+		if (result.success) {
+			const scheduledTime = new Date(postToPublish.scheduled_time);
+			const timeStr = scheduledTime.toLocaleString('en-US', {
+				weekday: 'short',
+				month: 'short',
+				day: 'numeric',
+				hour: '2-digit',
+				minute: '2-digit',
+				hour12: false
+			});
+
+			await ctx.reply(
+				`✅ <b>Post published successfully!</b>\n\n` +
+				`📁 ${postToPublish.file_id}\n` +
+				`⏰ Was scheduled for: ${timeStr}\n` +
+				`💬 Message ID: ${result.messageId}\n\n` +
+				`The time slot is now free for new posts.`,
+				{ parse_mode: 'HTML' }
+			);
+		} else {
+			await ctx.reply(
+				`❌ <b>Failed to publish post</b>\n\n` +
+				`Error: ${result.error}`,
+				{ parse_mode: 'HTML' }
+			);
+		}
 	});
 
 	// Error handling
@@ -52,8 +261,7 @@ async function main() {
 		},
 	});
 
-	// Initialize scheduler
-	const scheduler = new Scheduler(bot, storage);
+	// Start the scheduler (already initialized above for commands)
 	scheduler.start();
 
 	// Create Express app for API
@@ -71,7 +279,7 @@ async function main() {
 	}));
 	
 	app.use(express.json());
-	app.use('/api', createApiRouter(storage));
+	app.use('/api', createApiRouter(storage, scheduler));
 
 	// Health check endpoint
 	app.get('/health', (req, res) => {

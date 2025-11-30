@@ -3,7 +3,9 @@ import type {
 	BusySlotsResponse, 
 	ScheduleRequest, 
 	ScheduleResponse, 
-	PublishedResponse 
+	PublishedResponse,
+	PublishRequest,
+	PublishResponse
 } from './types';
 
 export class ApiClient {
@@ -16,8 +18,18 @@ export class ApiClient {
 	async getBusySlots(timeSlots?: string[]): Promise<BusySlotsResponse | null> {
 		try {
 			let url = `${this.baseUrl}/api/schedule`;
+			const params = new URLSearchParams();
+			
 			if (timeSlots && timeSlots.length > 0) {
-				url += `?timeSlots=${encodeURIComponent(timeSlots.join(','))}`;
+				params.set('timeSlots', timeSlots.join(','));
+			}
+			
+			// Send timezone offset so server can convert UTC times to local for comparison
+			const timezoneOffset = new Date().getTimezoneOffset(); // minutes, negative for UTC+
+			params.set('tzOffset', timezoneOffset.toString());
+			
+			if (params.toString()) {
+				url += `?${params.toString()}`;
 			}
 			
 			const response = await fetch(url, {
@@ -79,6 +91,29 @@ export class ApiClient {
 		} catch (error) {
 			console.error('[Obsidigram] Failed to fetch published posts:', error);
 			new Notice('Bot unreachable: Could not fetch published posts');
+			return null;
+		}
+	}
+
+	async publishNow(request: PublishRequest): Promise<PublishResponse | null> {
+		try {
+			const response = await fetch(`${this.baseUrl}/api/publish`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify(request),
+			});
+
+			if (!response.ok) {
+				const errorText = await response.text();
+				throw new Error(`HTTP ${response.status}: ${errorText}`);
+			}
+
+			return await response.json();
+		} catch (error) {
+			console.error('[Obsidigram] Failed to publish post:', error);
+			new Notice(`Bot unreachable: ${error instanceof Error ? error.message : 'Unknown error'}`);
 			return null;
 		}
 	}

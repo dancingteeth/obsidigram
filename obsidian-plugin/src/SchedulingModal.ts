@@ -97,12 +97,24 @@ export class SchedulingModal extends Modal {
 			});
 		});
 
-		// Add submit button
+		// Add buttons
 		const buttonContainer = container.createDiv('obsidigram-button-container');
+		
+		// Create Publish Now button (always enabled)
+		const publishNowButton = buttonContainer.createEl('button', {
+			text: '⚡ Publish Now',
+			cls: 'mod-warning'
+		});
+		publishNowButton.addEventListener('click', async (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			console.log('[Obsidigram] Publish Now button clicked!');
+			await this.publishNow();
+		});
 		
 		// Create Schedule button manually for better control
 		this.submitButton = buttonContainer.createEl('button', {
-			text: 'Schedule',
+			text: '📅 Schedule',
 			cls: 'mod-cta'
 		});
 		this.submitButton.disabled = true;
@@ -233,6 +245,55 @@ export class SchedulingModal extends Modal {
 		}
 	}
 
+	private async publishNow(): Promise<void> {
+		console.log('[Obsidigram] publishNow called');
+
+		// Read file content
+		const content = await this.plugin.app.vault.read(this.file);
+		console.log(`[Obsidigram] File content length: ${content.length}`);
+		
+		// Convert markdown to Telegram HTML format
+		let telegramContent = MarkdownConverter.convertToTelegramHTML(content);
+		console.log(`[Obsidigram] Telegram content length: ${telegramContent.length}`);
+		
+		// Truncate if too long (Telegram limit is 4096 characters)
+		telegramContent = MarkdownConverter.truncateForTelegram(telegramContent);
+
+		// Get all tags
+		const fileWatcher = this.plugin.fileWatcher;
+		const allTags = fileWatcher.getAllTags(this.file);
+		const contentTags = allTags.filter(t => 
+			!t.startsWith('tg_') && !t.startsWith('#tg_')
+		);
+		console.log(`[Obsidigram] Content tags: ${JSON.stringify(contentTags)}`);
+
+		// Send publish request
+		console.log(`[Obsidigram] Sending publish request to API: ${this.plugin.settings.botApiUrl}`);
+		try {
+			const response = await this.apiClient.publishNow({
+				action: 'publish',
+				file_id: this.file.path,
+				content: telegramContent,
+				category: this.category,
+				tags: contentTags
+			});
+
+			console.log(`[Obsidigram] API response:`, response);
+
+			if (response && response.success) {
+				// Update file tags to mark as published
+				await this.plugin.markFileAsPublished(this.file);
+				new Notice('Post published successfully! 🎉');
+				this.close();
+			} else {
+				console.error('[Obsidigram] Publish failed, response:', response);
+				new Notice(`Failed to publish post: ${response?.message || 'Bot unreachable'}`);
+			}
+		} catch (error) {
+			console.error('[Obsidigram] Error publishing post:', error);
+			new Notice(`Failed to publish post: ${error}`);
+		}
+	}
 
 	onClose(): void {
 		const { contentEl } = this;

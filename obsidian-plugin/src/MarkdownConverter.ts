@@ -60,8 +60,8 @@ export class MarkdownConverter {
 		// Convert strikethrough
 		content = content.replace(/~~([^~]+)~~/g, '<s>$1</s>');
 
-		// Convert links [text](url)
-		content = content.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+		// Convert links [text](url) or [text](url "title") - ignore the title
+		content = content.replace(/\[([^\]]+)\]\(([^\s)]+)(?:\s+"[^"]*")?\)/g, '<a href="$2">$1</a>');
 
 		// Convert line breaks (double newline = paragraph break)
 		content = content.replace(/\n\n+/g, '\n\n');
