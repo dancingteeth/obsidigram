@@ -1,11 +1,11 @@
 import express, { Request, Response } from 'express';
-import { Storage } from './storage';
+import { Storage } from './storage.js';
 import type { 
 	ScheduleRequest, 
 	ScheduleResponse, 
 	BusySlot,
 	PublishedPost 
-} from './types';
+} from './types.js';
 
 export function createApiRouter(storage: Storage) {
 	const router = express.Router();

@@ -67,14 +67,20 @@ fi
 echo ""
 
 # Step 5: Install dependencies and build on server
-echo -e "${YELLOW}📥 Installing dependencies on server...${NC}"
-ssh "$SERVER" "cd $REMOTE_DIR && npm ci --only=production"
+echo -e "${YELLOW}📥 Installing dependencies on server (including dev for build)...${NC}"
+ssh "$SERVER" "cd $REMOTE_DIR && npm ci"
 echo -e "${GREEN}✅ Dependencies installed${NC}"
 echo ""
 
 echo -e "${YELLOW}🔨 Building on server...${NC}"
 ssh "$SERVER" "cd $REMOTE_DIR && npm run build"
 echo -e "${GREEN}✅ Build complete on server${NC}"
+echo ""
+
+# Step 5b: Reinstall with production only after build
+echo -e "${YELLOW}📦 Installing production dependencies only...${NC}"
+ssh "$SERVER" "cd $REMOTE_DIR && npm ci --omit=dev"
+echo -e "${GREEN}✅ Production dependencies installed${NC}"
 echo ""
 
 # Step 6: Build and start Docker container

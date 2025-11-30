@@ -1,7 +1,7 @@
 import cron from 'node-cron';
 import { Bot } from 'grammy';
-import { Storage } from './storage';
-import type { ScheduledPost } from './types';
+import { Storage } from './storage.js';
+import type { ScheduledPost } from './types.js';
 
 export class Scheduler {
 	private bot: Bot;

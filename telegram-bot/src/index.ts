@@ -1,9 +1,9 @@
 import 'dotenv/config';
 import { Bot } from 'grammy';
 import express from 'express';
-import { Storage } from './storage';
-import { Scheduler } from './scheduler';
-import { createApiRouter } from './api';
+import { Storage } from './storage.js';
+import { Scheduler } from './scheduler.js';
+import { createApiRouter } from './api.js';
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 if (!BOT_TOKEN) {
@@ -11,7 +11,7 @@ if (!BOT_TOKEN) {
 	process.exit(1);
 }
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3001;
-const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+const CHAT_ID = process.env.TELEGRAM_CHAT_ID || undefined;
 
 async function main() {
 	console.log('[Obsidigram Bot] Starting...');
@@ -20,8 +20,8 @@ async function main() {
 	const storage = new Storage();
 	await storage.initialize();
 
-	// Initialize bot
-	const bot = new Bot(BOT_TOKEN);
+	// Initialize bot (BOT_TOKEN is guaranteed to be defined after the check above)
+	const bot = new Bot(BOT_TOKEN as string);
 
 	// Basic bot commands
 	bot.command('start', async (ctx) => {
