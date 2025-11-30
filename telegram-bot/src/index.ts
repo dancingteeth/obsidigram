@@ -60,11 +60,14 @@ async function main() {
 	const app = express();
 	
 	// Enable CORS for Obsidian plugin (Electron app)
+	// Allow all origins for Electron apps (they use custom protocols)
 	app.use(cors({
-		origin: ['app://obsidian.md', 'capacitor://localhost', 'http://localhost:*'],
+		origin: true, // Allow all origins (safe for Electron apps)
 		credentials: true,
 		methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-		allowedHeaders: ['Content-Type', 'Authorization']
+		allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+		preflightContinue: false,
+		optionsSuccessStatus: 204
 	}));
 	
 	app.use(express.json());

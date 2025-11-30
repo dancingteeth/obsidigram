@@ -14,6 +14,7 @@ export class SchedulingModal extends Modal {
 	private selectedDate: string | null = null;
 	private selectedTime: string | null = null;
 	private isLoading: boolean = true;
+	public onCloseCallback?: () => void;
 
 	constructor(plugin: ObsidigramPlugin, file: TFile, category: string) {
 		super(plugin.app);
@@ -206,6 +207,10 @@ export class SchedulingModal extends Modal {
 	onClose(): void {
 		const { contentEl } = this;
 		contentEl.empty();
+		// Call the callback to clear tracking in the plugin
+		if (this.onCloseCallback) {
+			this.onCloseCallback();
+		}
 	}
 }
 

@@ -17,6 +17,7 @@ import { DEFAULT_SETTINGS } from './src/types';
 export default class ObsidigramPlugin extends Plugin {
 	settings: ObsidigramSettings;
 	fileWatcher: FileWatcher;
+	private currentModal: SchedulingModal | null = null;
 
 	async onload(): Promise<void> {
 		console.log('[Obsidigram] Loading plugin...');
@@ -99,16 +100,22 @@ export default class ObsidigramPlugin extends Plugin {
 	 * Open scheduling modal for a file
 	 */
 	openSchedulingModal(file: TFile, category: string): void {
-		// Check if modal is already open for this file
-		// Using a simple check - could be improved with modal tracking
-		const existingModal = (this.app as any).workspace.getModal();
-		if (existingModal instanceof SchedulingModal) {
-			// Don't open duplicate modals
+		// Check if modal is already open
+		if (this.currentModal) {
 			console.log('[Obsidigram] Scheduling modal already open, skipping');
 			return;
 		}
 
-		new SchedulingModal(this, file, category).open();
+		// Create and track the modal
+		const modal = new SchedulingModal(this, file, category);
+		this.currentModal = modal;
+		
+		// Clear tracking when modal closes
+		modal.onCloseCallback = () => {
+			this.currentModal = null;
+		};
+		
+		modal.open();
 	}
 
 	/**
