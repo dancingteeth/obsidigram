@@ -30,6 +30,10 @@ export interface BusySlot {
 	date: string; // YYYY-MM-DD
 	time: string; // HH:mm
 	isBusy: boolean;
+	// Info about the scheduled post (only if busy)
+	category?: string;
+	fileId?: string;
+	contentPreview?: string; // First ~100 chars of content
 }
 
 export interface PublishedPost {

@@ -25,21 +25,41 @@ export function createApiRouter(storage: Storage, scheduler?: Scheduler) {
 			
 			console.log(`[API] Client timezone offset: ${tzOffset} minutes (UTC${tzOffset <= 0 ? '+' : '-'}${Math.abs(tzOffset / 60)})`);
 			
-			// Build set of busy slots from all scheduled posts
-			// Convert UTC times to client's local time for comparison
-			const busySlots = new Set<string>();
+			// Build map of busy slots with post info
+			// Key: "YYYY-MM-DD_HH:mm", Value: post info
+			interface SlotInfo {
+				category: string;
+				fileId: string;
+				contentPreview: string;
+			}
+			const busySlotsMap = new Map<string, SlotInfo>();
+			
 			scheduledPosts.forEach(post => {
 				const scheduledDateUTC = new Date(post.scheduled_time);
 				// Convert to client's local time by subtracting the offset
-				// (offset is negative for UTC+, so we subtract to go from UTC to local)
 				const scheduledDateLocal = new Date(scheduledDateUTC.getTime() - tzOffset * 60 * 1000);
 				
 				const date = scheduledDateLocal.toISOString().split('T')[0]; // YYYY-MM-DD
 				const hours = scheduledDateLocal.getUTCHours().toString().padStart(2, '0');
 				const minutes = scheduledDateLocal.getUTCMinutes().toString().padStart(2, '0');
 				const time = `${hours}:${minutes}`; // HH:mm in client's local time
-				busySlots.add(`${date}_${time}`);
-				console.log(`[API] Busy slot: ${date}_${time} (from UTC: ${post.scheduled_time})`);
+				const slotKey = `${date}_${time}`;
+				
+				// Strip HTML tags and get first ~100 chars for preview
+				const plainText = post.content
+					.replace(/<[^>]*>/g, '') // Remove HTML tags
+					.replace(/\n+/g, ' ')    // Replace newlines with spaces
+					.trim();
+				const contentPreview = plainText.length > 100 
+					? plainText.substring(0, 100) + '...' 
+					: plainText;
+				
+				busySlotsMap.set(slotKey, {
+					category: post.category,
+					fileId: post.file_id,
+					contentPreview,
+				});
+				console.log(`[API] Busy slot: ${slotKey} (category: ${post.category})`);
 			});
 
 			// Generate slots for next 7 days in client's local time
@@ -63,11 +83,19 @@ export function createApiRouter(storage: Storage, scheduler?: Scheduler) {
 
 				timeSlots.forEach(time => {
 					const slotKey = `${dateStr}_${time}`;
-					const isBusy = busySlots.has(slotKey);
+					const slotInfo = busySlotsMap.get(slotKey);
+					const isBusy = !!slotInfo;
+					
 					slots.push({
 						date: dateStr,
 						time,
 						isBusy,
+						// Include post info if busy
+						...(slotInfo && {
+							category: slotInfo.category,
+							fileId: slotInfo.fileId,
+							contentPreview: slotInfo.contentPreview,
+						}),
 					});
 				});
 			}

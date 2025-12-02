@@ -68,6 +68,13 @@
 	opacity: 0.8;
 }
 
+.obsidigram-slot-past {
+	cursor: not-allowed;
+	background-color: var(--background-secondary);
+	opacity: 0.4;
+	color: var(--text-muted);
+}
+
 .obsidigram-button-container {
 	margin-top: 20px;
 	display: flex;

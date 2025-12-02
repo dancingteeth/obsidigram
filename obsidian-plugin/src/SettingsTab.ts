@@ -1,5 +1,6 @@
 import { App, PluginSettingTab, Setting, Notice, TextComponent, ButtonComponent } from 'obsidian';
 import type ObsidigramPlugin from '../main';
+import { DEFAULT_CATEGORIES, type CategoryConfig } from './types';
 
 export class ObsidigramSettingTab extends PluginSettingTab {
 	plugin: ObsidigramPlugin;
@@ -88,6 +89,87 @@ export class ObsidigramSettingTab extends PluginSettingTab {
 			this.plugin.settings.timeSlots = lines.length > 0 ? lines : ['09:00', '12:00', '15:00', '18:00', '21:00', '00:00'];
 			await this.plugin.saveSettings();
 		});
+
+		// ============================================
+		// Categories Section
+		// ============================================
+		containerEl.createEl('h3', { text: 'Categories' });
+		containerEl.createEl('p', { 
+			text: 'Configure category tags with their display letters and colors. Format: name,letter,color (one per line)',
+			cls: 'setting-item-description'
+		});
+
+		const categoriesContainer = containerEl.createDiv();
+		const categoriesTextArea = categoriesContainer.createEl('textarea', {
+			attr: {
+				style: 'width: 100%; min-height: 150px; font-family: monospace;',
+				placeholder: 'research,R,#e74c3c\ninfrastructure_energy,I,#f39c12\nslop_misinformation,S,#9b59b6'
+			}
+		});
+		
+		// Convert categories to text format
+		const categoriesToText = (cats: CategoryConfig[]): string => {
+			return cats.map(c => `${c.name},${c.letter},${c.color}`).join('\n');
+		};
+		
+		categoriesTextArea.value = categoriesToText(this.plugin.settings.categories || DEFAULT_CATEGORIES);
+
+		categoriesTextArea.addEventListener('change', async () => {
+			const lines = categoriesTextArea.value
+				.split('\n')
+				.map((line: string) => line.trim())
+				.filter((line: string) => line.length > 0);
+			
+			const categories: CategoryConfig[] = [];
+			for (const line of lines) {
+				const parts = line.split(',').map(p => p.trim());
+				if (parts.length >= 3) {
+					categories.push({
+						name: parts[0],
+						letter: parts[1].charAt(0).toUpperCase(),
+						color: parts[2].startsWith('#') ? parts[2] : `#${parts[2]}`,
+					});
+				}
+			}
+			
+			this.plugin.settings.categories = categories.length > 0 ? categories : DEFAULT_CATEGORIES;
+			await this.plugin.saveSettings();
+		});
+
+		// Category preview
+		const previewContainer = containerEl.createDiv({ cls: 'obsidigram-category-preview' });
+		previewContainer.style.marginTop = '10px';
+		previewContainer.style.display = 'flex';
+		previewContainer.style.flexWrap = 'wrap';
+		previewContainer.style.gap = '8px';
+		
+		const updatePreview = () => {
+			previewContainer.empty();
+			const cats = this.plugin.settings.categories || DEFAULT_CATEGORIES;
+			for (const cat of cats) {
+				const badge = previewContainer.createEl('span', {
+					text: cat.letter,
+					attr: {
+						title: `#tg_${cat.name}`,
+						style: `
+							display: inline-flex;
+							align-items: center;
+							justify-content: center;
+							width: 24px;
+							height: 24px;
+							border-radius: 4px;
+							background-color: ${cat.color};
+							color: white;
+							font-weight: bold;
+							font-size: 12px;
+						`
+					}
+				});
+			}
+		};
+		updatePreview();
+		
+		categoriesTextArea.addEventListener('change', updatePreview);
 
 		// ============================================
 		// About Section

@@ -55,15 +55,9 @@ rsync -avz --delete \
 echo -e "${GREEN}✅ Files transferred${NC}"
 echo ""
 
-# Step 4: Transfer .env file (if exists locally)
-if [ -f "$LOCAL_DIR/.env" ]; then
-    echo -e "${YELLOW}🔐 Transferring .env file...${NC}"
-    scp "$LOCAL_DIR/.env" "$SERVER:$REMOTE_DIR/.env"
-    echo -e "${GREEN}✅ .env file transferred${NC}"
-elif [ -f "$LOCAL_DIR/env.example" ]; then
-    echo -e "${YELLOW}⚠️  No .env file found, using env.example as template${NC}"
-    echo "You'll need to create .env on the server manually"
-fi
+# Step 4: Skip .env transfer - server has its own production .env
+# The server's .env file is managed separately and should not be overwritten
+echo -e "${YELLOW}🔐 Skipping .env transfer (server has production config)${NC}"
 echo ""
 
 # Step 5: Install dependencies and build on server

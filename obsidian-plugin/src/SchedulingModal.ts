@@ -3,14 +3,23 @@ import { TFile } from 'obsidian';
 import type ObsidigramPlugin from '../main';
 import { ApiClient } from './ApiClient';
 import { MarkdownConverter } from './MarkdownConverter';
-import type { ScheduledSlot } from './types';
+import type { ScheduledSlot, CategoryConfig } from './types';
+import { DEFAULT_CATEGORIES } from './types';
+
+// Info about a busy slot
+interface BusySlotInfo {
+	category: string;
+	fileId: string;
+	contentPreview: string;
+}
 
 export class SchedulingModal extends Modal {
 	private plugin: ObsidigramPlugin;
 	private file: TFile;
 	private category: string;
 	private apiClient: ApiClient;
-	private busySlots: Set<string> = new Set();
+	// Map of slot key to slot info (only for busy slots)
+	private busySlots: Map<string, BusySlotInfo> = new Map();
 	private selectedDate: string | null = null;
 	private selectedTime: string | null = null;
 	private isLoading: boolean = true;
@@ -43,10 +52,15 @@ export class SchedulingModal extends Modal {
 		loadingEl.remove();
 
 		if (busySlotsResponse) {
-			// Build set of busy slots
+			// Build map of busy slots with their info
 			busySlotsResponse.slots.forEach(slot => {
 				if (slot.isBusy) {
-					this.busySlots.add(`${slot.date}_${slot.time}`);
+					const key = `${slot.date}_${slot.time}`;
+					this.busySlots.set(key, {
+						category: slot.category || 'unknown',
+						fileId: slot.fileId || 'unknown',
+						contentPreview: slot.contentPreview || '',
+					});
 				}
 			});
 		}
@@ -61,32 +75,58 @@ export class SchedulingModal extends Modal {
 		// Get next 7 days
 		const days = this.getNext7Days();
 		const timeSlots = this.plugin.settings.timeSlots;
+		
+		// Sort time slots so 00:00 appears at the top (it's midnight of the displayed day)
+		const sortedTimeSlots = [...timeSlots].sort((a, b) => {
+			// 00:00 should come first (it's the start of the day)
+			if (a === '00:00') return -1;
+			if (b === '00:00') return 1;
+			return a.localeCompare(b);
+		});
 
 		// Create header row
 		const headerRow = calendarContainer.createDiv('obsidigram-calendar-header');
 		headerRow.createDiv('obsidigram-time-label').setText('Time');
 		days.forEach(day => {
 			const dayEl = headerRow.createDiv('obsidigram-day-header');
-			const date = new Date(day);
+			const date = new Date(day + 'T12:00:00'); // Use noon to avoid timezone issues in display
 			dayEl.createEl('div', { text: date.toLocaleDateString('en-US', { weekday: 'short' }) });
 			dayEl.createEl('div', { text: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) });
 		});
 
 		// Create time slot rows
-		timeSlots.forEach(timeSlot => {
+		sortedTimeSlots.forEach(timeSlot => {
 			const row = calendarContainer.createDiv('obsidigram-calendar-row');
 			row.createDiv('obsidigram-time-label').setText(timeSlot);
 
 			days.forEach(day => {
 				const slotKey = `${day}_${timeSlot}`;
-				const isBusy = this.busySlots.has(slotKey);
-				const slotEl = row.createDiv(`obsidigram-slot ${isBusy ? 'obsidigram-slot-busy' : 'obsidigram-slot-available'}`);
+				const slotInfo = this.busySlots.get(slotKey);
+				const isBusy = !!slotInfo;
+				
+				// Check if this slot is in the past
+				const [year, month, dayNum] = day.split('-').map(Number);
+				const [hours, minutes] = timeSlot.split(':').map(Number);
+				const slotDate = new Date(year, month - 1, dayNum, hours, minutes);
+				const isPast = slotDate <= new Date();
+				
+				const slotEl = row.createDiv(`obsidigram-slot ${isBusy ? 'obsidigram-slot-busy' : isPast ? 'obsidigram-slot-past' : 'obsidigram-slot-available'}`);
 				slotEl.setAttr('data-date', day);
 				slotEl.setAttr('data-time', timeSlot);
 				
-				if (isBusy) {
-					slotEl.setText('●');
-					slotEl.setAttr('title', 'Busy');
+				if (isBusy && slotInfo) {
+					// Get category config for letter and color
+					const categoryConfig = this.getCategoryConfig(slotInfo.category);
+					slotEl.setText(categoryConfig.letter);
+					slotEl.style.backgroundColor = categoryConfig.color;
+					slotEl.style.color = 'white';
+					slotEl.style.fontWeight = 'bold';
+					// Build rich tooltip with category and content preview
+					const tooltip = `#tg_${slotInfo.category}\n\n${slotInfo.contentPreview}`;
+					slotEl.setAttr('title', tooltip);
+				} else if (isPast) {
+					slotEl.setText('·');
+					slotEl.setAttr('title', 'Past');
 				} else {
 					slotEl.setText('○');
 					slotEl.setAttr('title', 'Available');
@@ -134,6 +174,18 @@ export class SchedulingModal extends Modal {
 		cancelButton.addEventListener('click', () => {
 			this.close();
 		});
+	}
+
+	private getCategoryConfig(categoryName: string): CategoryConfig {
+		const categories = this.plugin.settings.categories || DEFAULT_CATEGORIES;
+		const found = categories.find(c => c.name === categoryName);
+		if (found) return found;
+		// Fallback: generate letter from first char, use default color
+		return {
+			name: categoryName,
+			letter: categoryName.charAt(0).toUpperCase(),
+			color: '#888888', // Gray fallback
+		};
 	}
 
 	private getNext7Days(): string[] {
@@ -189,10 +241,11 @@ export class SchedulingModal extends Modal {
 
 		console.log(`[Obsidigram] Selected: ${this.selectedDate} ${this.selectedTime}`);
 
-		// Build ISO datetime string
+		// Build ISO datetime string - parse date parts manually to avoid timezone issues
+		const [year, month, day] = this.selectedDate.split('-').map(Number);
 		const [hours, minutes] = this.selectedTime.split(':').map(Number);
-		const scheduledDate = new Date(this.selectedDate);
-		scheduledDate.setHours(hours, minutes, 0, 0);
+		// Create date in local timezone by using individual components
+		const scheduledDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
 		const scheduledTime = scheduledDate.toISOString();
 
 		console.log(`[Obsidigram] Scheduled time ISO: ${scheduledTime}`);
