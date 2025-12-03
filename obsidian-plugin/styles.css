@@ -92,3 +92,9 @@
 	opacity: 0.9;
 }
 
+.obsidigram-subtitle {
+	color: var(--text-muted);
+	font-size: 0.9em;
+	margin-bottom: 10px;
+}
+

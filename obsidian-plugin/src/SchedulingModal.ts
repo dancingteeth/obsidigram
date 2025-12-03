@@ -15,7 +15,7 @@ interface BusySlotInfo {
 
 export class SchedulingModal extends Modal {
 	private plugin: ObsidigramPlugin;
-	private file: TFile;
+	private file: TFile | null;
 	private category: string;
 	private apiClient: ApiClient;
 	// Map of slot key to slot info (only for busy slots)
@@ -25,12 +25,14 @@ export class SchedulingModal extends Modal {
 	private isLoading: boolean = true;
 	public onCloseCallback?: () => void;
 	private submitButton: HTMLButtonElement | null = null;
+	private readOnly: boolean = false;
 
-	constructor(plugin: ObsidigramPlugin, file: TFile, category: string) {
+	constructor(plugin: ObsidigramPlugin, file: TFile | null, category: string, readOnly: boolean = false) {
 		super(plugin.app);
 		this.plugin = plugin;
 		this.file = file;
 		this.category = category;
+		this.readOnly = readOnly;
 		this.apiClient = new ApiClient(plugin.settings.botApiUrl);
 	}
 
@@ -38,10 +40,19 @@ export class SchedulingModal extends Modal {
 		const { contentEl } = this;
 		contentEl.empty();
 
-		contentEl.createEl('h2', { text: 'Schedule Telegram Post' });
-		contentEl.createEl('p', { 
-			text: `File: ${this.file.basename}\nCategory: ${this.category}` 
-		});
+		// Different title for read-only mode
+		if (this.readOnly) {
+			contentEl.createEl('h2', { text: '📅 Schedule Overview' });
+			contentEl.createEl('p', { 
+				text: 'View your scheduled posts and available time slots',
+				cls: 'obsidigram-subtitle'
+			});
+		} else {
+			contentEl.createEl('h2', { text: 'Schedule Telegram Post' });
+			contentEl.createEl('p', { 
+				text: `File: ${this.file?.basename || 'Unknown'}\nCategory: ${this.category}` 
+			});
+		}
 
 		// Show loading state
 		const loadingEl = contentEl.createEl('p', { text: 'Loading schedule...' });
@@ -140,40 +151,52 @@ export class SchedulingModal extends Modal {
 		// Add buttons
 		const buttonContainer = container.createDiv('obsidigram-button-container');
 		
-		// Create Publish Now button (always enabled)
-		const publishNowButton = buttonContainer.createEl('button', {
-			text: '⚡ Publish Now',
-			cls: 'mod-warning'
-		});
-		publishNowButton.addEventListener('click', async (e) => {
-			e.preventDefault();
-			e.stopPropagation();
-			console.log('[Obsidigram] Publish Now button clicked!');
-			await this.publishNow();
-		});
-		
-		// Create Schedule button manually for better control
-		this.submitButton = buttonContainer.createEl('button', {
-			text: '📅 Schedule',
-			cls: 'mod-cta'
-		});
-		this.submitButton.disabled = true;
-		this.submitButton.addEventListener('click', async (e) => {
-			e.preventDefault();
-			e.stopPropagation();
-			console.log('[Obsidigram] Schedule button clicked!');
-			if (this.selectedDate && this.selectedTime) {
-				await this.submitSchedule();
-			} else {
-				console.log('[Obsidigram] No slot selected');
-			}
-		});
-		
-		// Create Cancel button
-		const cancelButton = buttonContainer.createEl('button', { text: 'Cancel' });
-		cancelButton.addEventListener('click', () => {
-			this.close();
-		});
+		if (this.readOnly) {
+			// Read-only mode: only show Close button
+			const closeButton = buttonContainer.createEl('button', { 
+				text: 'Close',
+				cls: 'mod-cta'
+			});
+			closeButton.addEventListener('click', () => {
+				this.close();
+			});
+		} else {
+			// Full mode: show all action buttons
+			// Create Publish Now button (always enabled)
+			const publishNowButton = buttonContainer.createEl('button', {
+				text: '⚡ Publish Now',
+				cls: 'mod-warning'
+			});
+			publishNowButton.addEventListener('click', async (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				console.log('[Obsidigram] Publish Now button clicked!');
+				await this.publishNow();
+			});
+			
+			// Create Schedule button manually for better control
+			this.submitButton = buttonContainer.createEl('button', {
+				text: '📅 Schedule',
+				cls: 'mod-cta'
+			});
+			this.submitButton.disabled = true;
+			this.submitButton.addEventListener('click', async (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				console.log('[Obsidigram] Schedule button clicked!');
+				if (this.selectedDate && this.selectedTime) {
+					await this.submitSchedule();
+				} else {
+					console.log('[Obsidigram] No slot selected');
+				}
+			});
+			
+			// Create Cancel button
+			const cancelButton = buttonContainer.createEl('button', { text: 'Cancel' });
+			cancelButton.addEventListener('click', () => {
+				this.close();
+			});
+		}
 	}
 
 	private getCategoryConfig(categoryName: string): CategoryConfig {
@@ -234,6 +257,11 @@ export class SchedulingModal extends Modal {
 	private async submitSchedule(): Promise<void> {
 		console.log('[Obsidigram] submitSchedule called');
 		
+		if (!this.file) {
+			new Notice('No file selected');
+			return;
+		}
+
 		if (!this.selectedDate || !this.selectedTime) {
 			new Notice('Please select a time slot');
 			return;
@@ -251,7 +279,8 @@ export class SchedulingModal extends Modal {
 		console.log(`[Obsidigram] Scheduled time ISO: ${scheduledTime}`);
 
 		// Read file content
-		const content = await this.plugin.app.vault.read(this.file);
+		const file = this.file; // Store reference for type narrowing
+		const content = await this.plugin.app.vault.read(file);
 		console.log(`[Obsidigram] File content length: ${content.length}`);
 		
 		// Convert markdown to Telegram HTML format
@@ -263,7 +292,7 @@ export class SchedulingModal extends Modal {
 
 		// Get all tags
 		const fileWatcher = this.plugin.fileWatcher;
-		const allTags = fileWatcher.getAllTags(this.file);
+		const allTags = fileWatcher.getAllTags(file);
 		const contentTags = allTags.filter(t => 
 			!t.startsWith('tg_') && !t.startsWith('#tg_')
 		);
@@ -274,7 +303,7 @@ export class SchedulingModal extends Modal {
 		try {
 			const response = await this.apiClient.schedulePost({
 				action: 'schedule',
-				file_id: this.file.path,
+				file_id: file.path,
 				content: telegramContent,
 				scheduled_time: scheduledTime,
 				category: this.category,
@@ -285,7 +314,7 @@ export class SchedulingModal extends Modal {
 
 			if (response && response.success) {
 				// Update file tags
-				await this.plugin.updateFileTags(this.file, scheduledTime);
+				await this.plugin.updateFileTags(file, scheduledTime);
 				new Notice('Post scheduled successfully!');
 				this.close();
 			} else {
@@ -301,8 +330,15 @@ export class SchedulingModal extends Modal {
 	private async publishNow(): Promise<void> {
 		console.log('[Obsidigram] publishNow called');
 
+		if (!this.file) {
+			new Notice('No file selected');
+			return;
+		}
+
+		const file = this.file; // Store reference for type narrowing
+
 		// Read file content
-		const content = await this.plugin.app.vault.read(this.file);
+		const content = await this.plugin.app.vault.read(file);
 		console.log(`[Obsidigram] File content length: ${content.length}`);
 		
 		// Convert markdown to Telegram HTML format
@@ -314,7 +350,7 @@ export class SchedulingModal extends Modal {
 
 		// Get all tags
 		const fileWatcher = this.plugin.fileWatcher;
-		const allTags = fileWatcher.getAllTags(this.file);
+		const allTags = fileWatcher.getAllTags(file);
 		const contentTags = allTags.filter(t => 
 			!t.startsWith('tg_') && !t.startsWith('#tg_')
 		);
@@ -325,7 +361,7 @@ export class SchedulingModal extends Modal {
 		try {
 			const response = await this.apiClient.publishNow({
 				action: 'publish',
-				file_id: this.file.path,
+				file_id: file.path,
 				content: telegramContent,
 				category: this.category,
 				tags: contentTags
@@ -335,7 +371,7 @@ export class SchedulingModal extends Modal {
 
 			if (response && response.success) {
 				// Update file tags to mark as published
-				await this.plugin.markFileAsPublished(this.file);
+				await this.plugin.markFileAsPublished(file);
 				new Notice('Post published successfully! 🎉');
 				this.close();
 			} else {

@@ -74,6 +74,15 @@ export default class ObsidigramPlugin extends Plugin {
 	 * Add plugin commands
 	 */
 	private addCommands(): void {
+		// View schedule command (read-only calendar)
+		this.addCommand({
+			id: 'view-schedule',
+			name: 'View Schedule',
+			callback: () => {
+				this.openScheduleViewer();
+			}
+		});
+
 		// Sync command
 		this.addCommand({
 			id: 'sync-telegram-status',
@@ -94,6 +103,28 @@ export default class ObsidigramPlugin extends Plugin {
 				this.app.setting.openTabById('obsidigram');
 			}
 		});
+	}
+
+	/**
+	 * Open read-only schedule viewer
+	 */
+	openScheduleViewer(): void {
+		// Check if modal is already open
+		if (this.currentModal) {
+			console.log('[Obsidigram] Modal already open, skipping');
+			return;
+		}
+
+		// Create and track the modal in read-only mode (no file, no category)
+		const modal = new SchedulingModal(this, null, '', true);
+		this.currentModal = modal;
+		
+		// Clear tracking when modal closes
+		modal.onCloseCallback = () => {
+			this.currentModal = null;
+		};
+		
+		modal.open();
 	}
 
 	/**
