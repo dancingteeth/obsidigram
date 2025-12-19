@@ -2,9 +2,9 @@ import 'dotenv/config';
 import { Bot } from 'grammy';
 import express from 'express';
 import cors from 'cors';
-import { Storage } from './storage.js';
-import { Scheduler } from './scheduler.js';
-import { createApiRouter } from './api.js';
+import { Storage } from './storage';
+import { Scheduler } from './scheduler';
+import { createApiRouter } from './api';
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 if (!BOT_TOKEN) {
@@ -27,22 +27,57 @@ async function main() {
 	// Initialize scheduler early so we can use it in commands
 	const scheduler = new Scheduler(bot, storage);
 
-	// Basic bot commands
+	// Helper to check if command is from private chat (not channel/group)
+	const isPrivateChat = (ctx: any): boolean => {
+		return ctx.chat?.type === 'private';
+	};
+
+	// Basic bot commands (only respond in private chats to avoid channel spam)
 	bot.command('start', async (ctx) => {
+		if (!isPrivateChat(ctx)) return; // Ignore commands from channels/groups
 		await ctx.reply(
 			'👋 Hello! I am the <b>Obsidigram</b> bot.\n\n' +
-			'I receive scheduled posts from your Obsidian plugin and publish them to Telegram at the scheduled time.\n\n' +
+			'I receive scheduled posts from your Obsidian plugin and publish them to configured platforms.\n\n' +
 			'<b>Commands:</b>\n' +
 			'/schedule - View current schedule with post previews\n' +
 			'/post - Publish a post immediately\n' +
 			'/cancel - Cancel a specific scheduled post\n' +
 			'/status - View bot stats\n' +
+			'/platforms - Check configured publishing platforms\n' +
 			'/clear - Delete all scheduled posts',
 			{ parse_mode: 'HTML' }
 		);
 	});
 
+	bot.command('platforms', async (ctx) => {
+		if (!isPrivateChat(ctx)) return; // Ignore commands from channels/groups
+		await ctx.reply('🔍 Checking configured platforms...');
+		
+		const results = await scheduler.verifyPlatforms();
+		
+		let message = '📡 <b>Publishing Platforms</b>\n\n';
+		
+		for (const result of results) {
+			const icon = result.valid ? '✅' : '❌';
+			const platformName = result.platform.charAt(0).toUpperCase() + result.platform.slice(1);
+			message += `${icon} <b>${platformName}</b>`;
+			if (result.info) {
+				message += ` - ${result.info}`;
+			}
+			if (!result.valid && result.error) {
+				message += `\n   ⚠️ ${result.error}`;
+			}
+			message += '\n';
+		}
+		
+		const configuredCount = results.filter(r => r.valid).length;
+		message += `\n📊 ${configuredCount}/${results.length} platforms ready`;
+		
+		await ctx.reply(message, { parse_mode: 'HTML' });
+	});
+
 	bot.command('schedule', async (ctx) => {
+		if (!isPrivateChat(ctx)) return; // Ignore commands from channels/groups
 		const schedule = scheduler.getScheduleForTelegram();
 		
 		// Send header first
@@ -76,6 +111,7 @@ async function main() {
 	});
 
 	bot.command('status', async (ctx) => {
+		if (!isPrivateChat(ctx)) return; // Ignore commands from channels/groups
 		const scheduled = storage.getScheduledPosts().length;
 		const published = storage.getPublishedPosts().length;
 		await ctx.reply(
@@ -88,6 +124,7 @@ async function main() {
 
 	// Clear all scheduled posts
 	bot.command('clear', async (ctx) => {
+		if (!isPrivateChat(ctx)) return; // Ignore commands from channels/groups
 		const scheduledPosts = storage.getScheduledPosts();
 		const count = scheduledPosts.length;
 		
@@ -110,6 +147,7 @@ async function main() {
 
 	// Cancel a specific post by number (from /schedule list)
 	bot.command('cancel', async (ctx) => {
+		if (!isPrivateChat(ctx)) return; // Ignore commands from channels/groups
 		const scheduledPosts = storage.getScheduledPosts();
 		
 		if (scheduledPosts.length === 0) {
@@ -174,6 +212,7 @@ async function main() {
 
 	// Publish a post immediately
 	bot.command('post', async (ctx) => {
+		if (!isPrivateChat(ctx)) return; // Ignore commands from channels/groups
 		const scheduledPosts = storage.getScheduledPosts();
 		
 		if (scheduledPosts.length === 0) {

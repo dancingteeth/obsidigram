@@ -3,11 +3,19 @@ import { TFile } from 'obsidian';
 import type ObsidigramPlugin from '../main';
 import { ApiClient } from './ApiClient';
 import { MarkdownConverter } from './MarkdownConverter';
-import type { ScheduledSlot, CategoryConfig } from './types';
+import type { ScheduledSlot, CategoryConfig, Platform, PlatformVerification } from './types';
 import { DEFAULT_CATEGORIES } from './types';
 
 // Info about a busy slot
 interface BusySlotInfo {
+	category: string;
+	fileId: string;
+	contentPreview: string;
+}
+
+// Info about a custom (non-standard) scheduled slot for today
+interface CustomSlotInfo {
+	time: string; // HH:MM
 	category: string;
 	fileId: string;
 	contentPreview: string;
@@ -20,19 +28,30 @@ export class SchedulingModal extends Modal {
 	private apiClient: ApiClient;
 	// Map of slot key to slot info (only for busy slots)
 	private busySlots: Map<string, BusySlotInfo> = new Map();
+	// Custom (non-standard) slots for today
+	private todayCustomSlots: CustomSlotInfo[] = [];
 	private selectedDate: string | null = null;
 	private selectedTime: string | null = null;
 	private isLoading: boolean = true;
 	public onCloseCallback?: () => void;
 	private submitButton: HTMLButtonElement | null = null;
 	private readOnly: boolean = false;
+	// Platform selection
+	private availablePlatforms: Platform[] = ['telegram'];
+	private platformVerification: PlatformVerification[] = [];
+	private selectedPlatforms: Set<Platform> = new Set(['telegram']);
+	// Platforms intended by user via tags (e.g., tg_unpublished, fb_unpublished)
+	private intendedPlatforms?: Platform[];
+	// Quick timer input reference
+	private timerMinutesInput: HTMLInputElement | null = null;
 
-	constructor(plugin: ObsidigramPlugin, file: TFile | null, category: string, readOnly: boolean = false) {
+	constructor(plugin: ObsidigramPlugin, file: TFile | null, category: string, readOnly: boolean = false, intendedPlatforms?: Platform[]) {
 		super(plugin.app);
 		this.plugin = plugin;
 		this.file = file;
 		this.category = category;
 		this.readOnly = readOnly;
+		this.intendedPlatforms = intendedPlatforms;
 		this.apiClient = new ApiClient(plugin.settings.botApiUrl);
 	}
 
@@ -48,7 +67,7 @@ export class SchedulingModal extends Modal {
 				cls: 'obsidigram-subtitle'
 			});
 		} else {
-			contentEl.createEl('h2', { text: 'Schedule Telegram Post' });
+			contentEl.createEl('h2', { text: 'Schedule Post' });
 			contentEl.createEl('p', { 
 				text: `File: ${this.file?.basename || 'Unknown'}\nCategory: ${this.category}` 
 			});
@@ -57,12 +76,21 @@ export class SchedulingModal extends Modal {
 		// Show loading state
 		const loadingEl = contentEl.createEl('p', { text: 'Loading schedule...' });
 		
-		// Fetch busy slots with configured time slots
-		const busySlotsResponse = await this.apiClient.getBusySlots(this.plugin.settings.timeSlots);
+		// Fetch busy slots and available platforms in parallel
+		const [busySlotsResponse, platformsResponse] = await Promise.all([
+			this.apiClient.getBusySlots(this.plugin.settings.timeSlots),
+			this.apiClient.getPlatforms()
+		]);
+		
 		this.isLoading = false;
 		loadingEl.remove();
 
 		if (busySlotsResponse) {
+			// Get today's date in LOCAL timezone (not UTC)
+			const now = new Date();
+			const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+			const standardTimeSlots = new Set(this.plugin.settings.timeSlots);
+			
 			// Build map of busy slots with their info
 			busySlotsResponse.slots.forEach(slot => {
 				if (slot.isBusy) {
@@ -72,16 +100,165 @@ export class SchedulingModal extends Modal {
 						fileId: slot.fileId || 'unknown',
 						contentPreview: slot.contentPreview || '',
 					});
+					
+					// Track custom (non-standard) slots for today
+					if (slot.date === today && !standardTimeSlots.has(slot.time)) {
+						this.todayCustomSlots.push({
+							time: slot.time,
+							category: slot.category || 'unknown',
+							fileId: slot.fileId || 'unknown',
+							contentPreview: slot.contentPreview || '',
+						});
+					}
 				}
 			});
+			
+			// Sort custom slots by time
+			this.todayCustomSlots.sort((a, b) => a.time.localeCompare(b.time));
+		}
+
+		// Set up available platforms
+		if (platformsResponse) {
+			this.availablePlatforms = platformsResponse.platforms;
+			this.platformVerification = platformsResponse.verified;
+			
+			// Determine which platforms to pre-select:
+			// 1. If user specified platforms via tags (tg_unpublished, fb_unpublished, etc.), use those
+			// 2. Otherwise, use default platforms from settings
+			let platformsToSelect: Platform[];
+			
+			if (this.intendedPlatforms && this.intendedPlatforms.length > 0) {
+				// User specified platforms via tags - use their intent
+				platformsToSelect = this.intendedPlatforms.filter(p => this.availablePlatforms.includes(p));
+				console.log(`[Obsidigram] Using intended platforms from tags: ${platformsToSelect.join(', ')}`);
+			} else {
+				// No specific intent - use defaults
+				platformsToSelect = this.plugin.settings.defaultPlatforms || ['telegram'];
+				console.log(`[Obsidigram] Using default platforms: ${platformsToSelect.join(', ')}`);
+			}
+			
+			this.selectedPlatforms = new Set(
+				platformsToSelect.filter(p => this.availablePlatforms.includes(p))
+			);
+			
+			// Ensure at least telegram is selected
+			if (this.selectedPlatforms.size === 0) {
+				this.selectedPlatforms.add('telegram');
+			}
+		}
+
+		// Render platform selection (only in non-read-only mode)
+		if (!this.readOnly && this.availablePlatforms.length > 1) {
+			this.renderPlatformSelection(contentEl);
 		}
 
 		// Render calendar grid
 		this.renderCalendar(contentEl);
 	}
 
+	private renderPlatformSelection(container: HTMLElement): void {
+		const platformContainer = container.createDiv('obsidigram-platforms');
+		platformContainer.createEl('h3', { text: '📡 Publish to:' });
+		
+		const checkboxContainer = platformContainer.createDiv('obsidigram-platform-checkboxes');
+		
+		const platformIcons: Record<Platform, string> = {
+			telegram: '✈️',
+			facebook: '📘',
+			threads: '🧵'
+		};
+		
+		const platformNames: Record<Platform, string> = {
+			telegram: 'Telegram',
+			facebook: 'Facebook',
+			threads: 'Threads'
+		};
+		
+		this.availablePlatforms.forEach(platform => {
+			const verification = this.platformVerification.find(v => v.platform === platform);
+			const isValid = verification?.valid ?? true;
+			
+			const platformRow = checkboxContainer.createDiv('obsidigram-platform-row');
+			
+			const label = platformRow.createEl('label', {
+				cls: `obsidigram-platform-label ${!isValid ? 'obsidigram-platform-invalid' : ''}`
+			});
+			
+			const checkbox = label.createEl('input', {
+				type: 'checkbox',
+				cls: 'obsidigram-platform-checkbox'
+			});
+			checkbox.checked = this.selectedPlatforms.has(platform) && isValid;
+			checkbox.disabled = !isValid;
+			
+			// If invalid, remove from selected platforms
+			if (!isValid) {
+				this.selectedPlatforms.delete(platform);
+			}
+			
+			checkbox.addEventListener('change', () => {
+				if (checkbox.checked) {
+					this.selectedPlatforms.add(platform);
+				} else {
+					// Don't allow deselecting all platforms
+					if (this.selectedPlatforms.size > 1) {
+						this.selectedPlatforms.delete(platform);
+					} else {
+						checkbox.checked = true;
+						new Notice('At least one platform must be selected');
+					}
+				}
+			});
+			
+			const icon = platformIcons[platform] || '📱';
+			const name = platformNames[platform] || platform;
+			label.createSpan({ text: ` ${icon} ${name}` });
+			
+			if (!isValid) {
+				// Show error message inline
+				const errorSpan = label.createSpan({ 
+					text: ' ⚠️',
+					cls: 'obsidigram-platform-warning'
+				});
+				// Create error details below the checkbox
+				const errorDetail = platformRow.createDiv('obsidigram-platform-error');
+				const errorText = this.formatPlatformError(verification?.error || 'Not configured');
+				errorDetail.setText(errorText);
+			} else if (verification?.info) {
+				label.createSpan({ 
+					text: ` (${verification.info})`,
+					cls: 'obsidigram-platform-info'
+				});
+			}
+		});
+	}
+
+	private formatPlatformError(error: string): string {
+		// Shorten common error messages
+		if (error.includes('Session has expired')) {
+			return '❌ Token expired - regenerate in Facebook Developer Portal';
+		}
+		if (error.includes('pages_read_engagement') || error.includes('pages_manage_posts')) {
+			return '❌ Missing permissions - regenerate token with pages_read_engagement & pages_manage_posts';
+		}
+		if (error.includes('Invalid access token')) {
+			return '❌ Invalid token - check configuration';
+		}
+		if (error.includes('Not configured')) {
+			return '⚙️ Not configured';
+		}
+		// Truncate long errors
+		if (error.length > 80) {
+			return '❌ ' + error.substring(0, 77) + '...';
+		}
+		return '❌ ' + error;
+	}
+
 	private renderCalendar(container: HTMLElement): void {
-		const calendarContainer = container.createDiv('obsidigram-calendar');
+		// Create a wrapper for calendar + quick timer panel
+		const mainWrapper = container.createDiv('obsidigram-main-wrapper');
+		
+		const calendarContainer = mainWrapper.createDiv('obsidigram-calendar');
 		
 		// Get next 7 days
 		const days = this.getNext7Days();
@@ -148,6 +325,14 @@ export class SchedulingModal extends Modal {
 			});
 		});
 
+		// Render quick timer panel (only in non-read-only mode)
+		if (!this.readOnly) {
+			this.renderQuickTimerPanel(mainWrapper);
+		} else if (this.todayCustomSlots.length > 0) {
+			// In read-only mode, just show today's custom slots if any
+			this.renderTodayCustomSlots(mainWrapper);
+		}
+
 		// Add buttons
 		const buttonContainer = container.createDiv('obsidigram-button-container');
 		
@@ -209,6 +394,128 @@ export class SchedulingModal extends Modal {
 			letter: categoryName.charAt(0).toUpperCase(),
 			color: '#888888', // Gray fallback
 		};
+	}
+
+	private renderQuickTimerPanel(container: HTMLElement): void {
+		const panel = container.createDiv('obsidigram-quick-timer-panel');
+		
+		// Header
+		panel.createEl('h3', { text: '⏱️ Post in' });
+		
+		// Timer input row
+		const inputRow = panel.createDiv('obsidigram-timer-input-row');
+		
+		this.timerMinutesInput = inputRow.createEl('input', {
+			type: 'number',
+			placeholder: '15',
+			cls: 'obsidigram-timer-input'
+		});
+		this.timerMinutesInput.min = '1';
+		this.timerMinutesInput.max = '1440'; // Max 24 hours
+		this.timerMinutesInput.value = '15';
+		
+		inputRow.createSpan({ text: 'min', cls: 'obsidigram-timer-unit' });
+		
+		const timerButton = inputRow.createEl('button', {
+			text: '📤 Go',
+			cls: 'obsidigram-timer-button'
+		});
+		timerButton.setAttr('title', 'Schedule for this time');
+		timerButton.addEventListener('click', async () => {
+			await this.scheduleWithTimer();
+		});
+		
+		// Quick preset buttons
+		const presetsRow = panel.createDiv('obsidigram-timer-presets');
+		const presets = [5, 10, 15, 30, 60];
+		presets.forEach(mins => {
+			const presetBtn = presetsRow.createEl('button', {
+				text: mins < 60 ? `${mins}` : `${mins / 60}h`,
+				cls: 'obsidigram-preset-button'
+			});
+			presetBtn.addEventListener('click', () => {
+				if (this.timerMinutesInput) {
+					this.timerMinutesInput.value = String(mins);
+				}
+			});
+		});
+		
+		// Today's custom slots section (only if there are custom slots)
+		if (this.todayCustomSlots.length > 0) {
+			this.renderTodayCustomSlots(panel);
+		}
+	}
+
+	private renderTodayCustomSlots(container: HTMLElement): void {
+		if (this.todayCustomSlots.length === 0) {
+			return; // Nothing to show
+		}
+		
+		const section = container.createDiv('obsidigram-custom-slots-section');
+		section.createEl('h4', { text: "Custom:" });
+		
+		const slotsList = section.createDiv('obsidigram-custom-slots-list');
+		
+		const now = new Date();
+		const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+		
+		// Show only upcoming custom slots (max 4 to save space)
+		const upcomingSlots = this.todayCustomSlots
+			.filter(slot => slot.time >= currentTime)
+			.slice(0, 4);
+		
+		upcomingSlots.forEach(slot => {
+			const slotEl = slotsList.createDiv('obsidigram-custom-slot');
+			
+			// Time badge
+			slotEl.createSpan({ 
+				text: slot.time,
+				cls: 'obsidigram-custom-slot-time'
+			});
+			
+			// Category badge
+			const categoryConfig = this.getCategoryConfig(slot.category);
+			const categoryBadge = slotEl.createSpan({
+				text: categoryConfig.letter,
+				cls: 'obsidigram-custom-slot-category'
+			});
+			categoryBadge.style.backgroundColor = categoryConfig.color;
+			
+			slotEl.setAttr('title', `${slot.time} - #tg_${slot.category}\n${slot.contentPreview}`);
+		});
+	}
+
+	private async scheduleWithTimer(): Promise<void> {
+		if (!this.timerMinutesInput) return;
+		
+		const minutes = parseInt(this.timerMinutesInput.value, 10);
+		if (isNaN(minutes) || minutes < 1) {
+			new Notice('Please enter a valid number of minutes');
+			return;
+		}
+		
+		// Calculate scheduled time
+		const scheduledDate = new Date();
+		scheduledDate.setMinutes(scheduledDate.getMinutes() + minutes);
+		
+		// Format date in LOCAL timezone (YYYY-MM-DD)
+		const year = scheduledDate.getFullYear();
+		const month = String(scheduledDate.getMonth() + 1).padStart(2, '0');
+		const day = String(scheduledDate.getDate()).padStart(2, '0');
+		const dateStr = `${year}-${month}-${day}`;
+		
+		// Format time in LOCAL timezone (HH:MM)
+		const hours = String(scheduledDate.getHours()).padStart(2, '0');
+		const mins = String(scheduledDate.getMinutes()).padStart(2, '0');
+		const timeStr = `${hours}:${mins}`;
+		
+		// Set selected date/time and submit
+		this.selectedDate = dateStr;
+		this.selectedTime = timeStr;
+		
+		console.log(`[Obsidigram] Scheduling with timer: ${minutes} minutes -> ${this.selectedDate} ${this.selectedTime}`);
+		
+		await this.submitSchedule();
 	}
 
 	private getNext7Days(): string[] {
@@ -294,12 +601,23 @@ export class SchedulingModal extends Modal {
 		const fileWatcher = this.plugin.fileWatcher;
 		const allTags = fileWatcher.getAllTags(file);
 		const contentTags = allTags.filter(t => 
-			!t.startsWith('tg_') && !t.startsWith('#tg_')
+			!t.startsWith('tg_') && !t.startsWith('#tg_') &&
+			!t.startsWith('fb_') && !t.startsWith('#fb_') &&
+			!t.startsWith('thr_') && !t.startsWith('#thr_') &&
+			!t.startsWith('cms_') && !t.startsWith('#cms_')
 		);
 		console.log(`[Obsidigram] Content tags: ${JSON.stringify(contentTags)}`);
 
 		// Send schedule request
+		const platforms = Array.from(this.selectedPlatforms) as Platform[];
+		
+		if (platforms.length === 0) {
+			new Notice('❌ No valid platforms selected. Please check your configuration.');
+			return;
+		}
+
 		console.log(`[Obsidigram] Sending schedule request to API: ${this.plugin.settings.botApiUrl}`);
+		console.log(`[Obsidigram] Target platforms: ${platforms.join(', ')}`);
 		try {
 			const response = await this.apiClient.schedulePost({
 				action: 'schedule',
@@ -307,14 +625,15 @@ export class SchedulingModal extends Modal {
 				content: telegramContent,
 				scheduled_time: scheduledTime,
 				category: this.category,
-				tags: contentTags
+				tags: contentTags,
+				platforms: platforms
 			});
 
 			console.log(`[Obsidigram] API response:`, response);
 
 			if (response && response.success) {
-				// Update file tags
-				await this.plugin.updateFileTags(file, scheduledTime);
+				// Update file tags with platforms
+				await this.plugin.updateFileTags(file, scheduledTime, platforms);
 				new Notice('Post scheduled successfully!');
 				this.close();
 			} else {
@@ -323,7 +642,7 @@ export class SchedulingModal extends Modal {
 			}
 		} catch (error) {
 			console.error('[Obsidigram] Error scheduling post:', error);
-			new Notice(`Failed to schedule post: ${error}`);
+			new Notice(`Failed to schedule post: ${error instanceof Error ? error.message : String(error)}`);
 		}
 	}
 
@@ -352,35 +671,62 @@ export class SchedulingModal extends Modal {
 		const fileWatcher = this.plugin.fileWatcher;
 		const allTags = fileWatcher.getAllTags(file);
 		const contentTags = allTags.filter(t => 
-			!t.startsWith('tg_') && !t.startsWith('#tg_')
+			!t.startsWith('tg_') && !t.startsWith('#tg_') &&
+			!t.startsWith('fb_') && !t.startsWith('#fb_') &&
+			!t.startsWith('thr_') && !t.startsWith('#thr_') &&
+			!t.startsWith('cms_') && !t.startsWith('#cms_')
 		);
 		console.log(`[Obsidigram] Content tags: ${JSON.stringify(contentTags)}`);
 
 		// Send publish request
+		const platforms = Array.from(this.selectedPlatforms) as Platform[];
+
+		if (platforms.length === 0) {
+			new Notice('❌ No valid platforms selected. Please check your configuration.');
+			return;
+		}
+
 		console.log(`[Obsidigram] Sending publish request to API: ${this.plugin.settings.botApiUrl}`);
+		console.log(`[Obsidigram] Target platforms: ${platforms.join(', ')}`);
 		try {
 			const response = await this.apiClient.publishNow({
 				action: 'publish',
 				file_id: file.path,
 				content: telegramContent,
 				category: this.category,
-				tags: contentTags
+				tags: contentTags,
+				platforms: platforms
 			});
 
 			console.log(`[Obsidigram] API response:`, response);
 
 			if (response && response.success) {
-				// Update file tags to mark as published
-				await this.plugin.markFileAsPublished(file);
+				// Update file tags to mark as published, passing platform results
+				await this.plugin.markFileAsPublished(file, response.platform_results);
 				new Notice('Post published successfully! 🎉');
 				this.close();
+			} else if (response && response.platform_results) {
+				// Partial success - some platforms worked
+				const successCount = response.platform_results.filter(r => r.success).length;
+				const failCount = response.platform_results.filter(r => !r.success).length;
+				
+				if (successCount > 0) {
+					// Update tags for successful platforms
+					await this.plugin.markFileAsPublished(file, response.platform_results);
+					new Notice(`Published to ${successCount} platform(s), ${failCount} failed`);
+					this.close();
+				} else {
+					console.error('[Obsidigram] All platforms failed:', response);
+					const errors = response.platform_results.map(r => `${r.platform}: ${r.error}`).join('\n');
+					new Notice(`Failed to publish:\n${errors}`);
+				}
 			} else {
 				console.error('[Obsidigram] Publish failed, response:', response);
 				new Notice(`Failed to publish post: ${response?.message || 'Bot unreachable'}`);
 			}
 		} catch (error) {
 			console.error('[Obsidigram] Error publishing post:', error);
-			new Notice(`Failed to publish post: ${error}`);
+			new Notice(`Failed to publish post: ${error instanceof Error ? error.message : String(error)}`);
 		}
 	}
 

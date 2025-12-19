@@ -98,3 +98,285 @@
 	margin-bottom: 10px;
 }
 
+/* Platform selection */
+.obsidigram-platforms {
+	margin: 15px 0;
+	padding: 10px;
+	background-color: var(--background-secondary);
+	border-radius: 8px;
+}
+
+.obsidigram-platforms h3 {
+	margin: 0 0 10px 0;
+	font-size: 0.95em;
+}
+
+.obsidigram-platform-checkboxes {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.obsidigram-platform-label {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	cursor: pointer;
+	padding: 5px 10px;
+	border-radius: 4px;
+	background-color: var(--background-primary);
+	transition: background-color 0.2s;
+}
+
+.obsidigram-platform-label:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.obsidigram-platform-invalid {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.obsidigram-platform-checkbox {
+	margin: 0;
+}
+
+.obsidigram-platform-warning {
+	color: var(--text-warning);
+}
+
+.obsidigram-platform-info {
+	color: var(--text-muted);
+	font-size: 0.85em;
+}
+
+/* Platform row with error */
+.obsidigram-platform-row {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.obsidigram-platform-error {
+	color: var(--text-error);
+	font-size: 0.8em;
+	padding-left: 25px;
+	margin-top: -2px;
+}
+
+/* Main wrapper for calendar + quick timer panel */
+.obsidigram-main-wrapper {
+	display: flex;
+	flex-direction: column;
+	gap: 15px;
+}
+
+/* Quick Timer Panel - horizontal layout below calendar */
+.obsidigram-quick-timer-panel {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 8px 12px;
+	background-color: var(--background-secondary);
+	border-radius: 6px;
+	border: 1px solid var(--background-modifier-border);
+	flex-wrap: wrap;
+}
+
+.obsidigram-quick-timer-panel h3 {
+	margin: 0;
+	font-size: 0.85em;
+	color: var(--text-muted);
+	white-space: nowrap;
+}
+
+.obsidigram-timer-input-row {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.obsidigram-timer-input {
+	width: 45px;
+	padding: 4px 5px;
+	border-radius: 4px;
+	border: 1px solid var(--background-modifier-border);
+	background-color: var(--background-primary);
+	font-size: 0.85em;
+	text-align: center;
+}
+
+.obsidigram-timer-input:focus {
+	border-color: var(--interactive-accent);
+	outline: none;
+}
+
+.obsidigram-timer-unit {
+	color: var(--text-muted);
+	font-size: 0.85em;
+}
+
+.obsidigram-timer-button {
+	padding: 4px 8px;
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 0.8em;
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border: none;
+	transition: opacity 0.2s;
+}
+
+.obsidigram-timer-button:hover {
+	opacity: 0.9;
+}
+
+/* Timer presets - inline */
+.obsidigram-timer-presets {
+	display: flex;
+	gap: 4px;
+}
+
+.obsidigram-preset-button {
+	padding: 3px 6px;
+	font-size: 0.7em;
+	border-radius: 3px;
+	border: 1px solid var(--background-modifier-border);
+	background-color: var(--background-primary);
+	cursor: pointer;
+	transition: all 0.2s;
+}
+
+.obsidigram-preset-button:hover {
+	background-color: var(--background-modifier-hover);
+	border-color: var(--interactive-accent);
+}
+
+/* Today's custom slots section - inline after presets */
+.obsidigram-custom-slots-section {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.obsidigram-custom-slots-section h4 {
+	margin: 0;
+	font-size: 0.8em;
+	color: var(--text-muted);
+	white-space: nowrap;
+}
+
+.obsidigram-custom-slots-list {
+	display: flex;
+	gap: 4px;
+}
+
+.obsidigram-custom-slot {
+	display: flex;
+	align-items: center;
+	gap: 3px;
+	padding: 2px 6px;
+	background-color: var(--background-primary);
+	border-radius: 4px;
+	font-size: 0.8em;
+	border: 1px solid var(--background-modifier-border);
+}
+
+.obsidigram-custom-slot-past {
+	opacity: 0.5;
+}
+
+.obsidigram-custom-slot-time {
+	font-weight: 600;
+	font-family: var(--font-monospace);
+	color: var(--text-accent);
+	font-size: 0.8em;
+}
+
+.obsidigram-custom-slot-category {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 14px;
+	height: 14px;
+	border-radius: 3px;
+	color: white;
+	font-weight: bold;
+	font-size: 0.65em;
+}
+
+.obsidigram-custom-slot-preview {
+	display: none; /* Hide preview in compact mode */
+}
+
+/* ============================================
+   Translation Modal Styles
+   ============================================ */
+
+.obsidigram-translation-modal {
+	padding: 1.5rem;
+	width: 500px;
+	max-width: 90vw;
+}
+
+.modal:has(.obsidigram-translation-modal) {
+	width: 550px !important;
+	max-width: 90vw !important;
+}
+
+.obsidigram-translation-preview {
+	margin: 1rem 0;
+	padding: 1rem;
+	background: var(--background-secondary);
+	border-radius: 8px;
+	border-left: 3px solid var(--interactive-accent);
+}
+
+.obsidigram-translation-text-preview {
+	margin-top: 0.5rem;
+	max-height: 150px;
+	overflow-y: auto;
+}
+
+.obsidigram-translation-text-preview code {
+	display: block;
+	padding: 0.75rem;
+	background: var(--background-primary);
+	border-radius: 4px;
+	font-family: var(--font-monospace);
+	font-size: 0.85em;
+	line-height: 1.4;
+	white-space: pre-wrap;
+	word-break: break-word;
+	color: var(--text-muted);
+}
+
+.obsidigram-translation-char-count {
+	margin-top: 0.5rem;
+	font-size: 0.85em;
+	color: var(--text-muted);
+	text-align: right;
+}
+
+.obsidigram-translation-buttons {
+	display: flex;
+	justify-content: flex-end;
+	gap: 0.75rem;
+	margin-top: 1.5rem;
+	padding-top: 1rem;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.obsidigram-translation-buttons button {
+	padding: 0.5rem 1rem;
+	border-radius: 6px;
+	font-size: 0.95em;
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.obsidigram-translating {
+	opacity: 0.7;
+	cursor: wait !important;
+}
+

@@ -30,8 +30,8 @@ cp env.example .env
 
 4. Create `.env` file with:
 ```env
-BOT_TOKEN=8410651978:AAGxJ_waNMXPtccFDWWYBkCprvvWmqeiM7s
-TELEGRAM_CHAT_ID=-1003377621214
+BOT_TOKEN=your_bot_token_here
+TELEGRAM_CHAT_ID=your_chat_id_here
 PORT=3001
 DATA_DIR=./data
 ```
@@ -41,9 +41,9 @@ DATA_DIR=./data
 - ⚠️ Port 3000 is in use by next-server
 - The bot will be accessible at `http://149.102.148.156:3001` (or via Nginx Proxy Manager if configured)
 
-**Channel IDs:**
-- Testing channel (https://t.me/dt_testing_channel): `-1003377621214`
-- Production channel: `-1002714280149`
+**Channel IDs (Examples):**
+- Testing channel: `your_testing_channel_id`
+- Production channel: `your_production_channel_id`
 
 Use the testing channel ID for development, and switch to production when ready.
 

@@ -64,9 +64,9 @@ Create a `.env` file in the `telegram-bot` directory with the following:
 BOT_TOKEN=your_bot_token_here
 TELEGRAM_CHAT_ID=your_chat_id_here
 
-# Channel IDs:
-# Testing channel (https://t.me/dt_testing_channel): -1003377621214
-# Production channel: -1002714280149
+# Channel IDs (Examples):
+# Testing channel: your_testing_channel_id
+# Production channel: your_production_channel_id
 
 # Server Configuration
 PORT=3001
@@ -78,8 +78,8 @@ DATA_DIR=./data
 **Required:**
 - `BOT_TOKEN` - Your Telegram bot token
 - `TELEGRAM_CHAT_ID` - The chat ID where posts should be sent
-  - Testing: `-1003377621214` (https://t.me/dt_testing_channel)
-  - Production: `-1002714280149`
+  - Testing: `your_testing_channel_id`
+  - Production: `your_production_channel_id`
 
 **Optional:**
 - `PORT` - HTTP server port (default: 3001)

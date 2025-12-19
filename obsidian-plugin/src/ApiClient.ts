@@ -5,7 +5,8 @@ import type {
 	ScheduleResponse, 
 	PublishedResponse,
 	PublishRequest,
-	PublishResponse
+	PublishResponse,
+	PlatformsResponse
 } from './types';
 
 export class ApiClient {
@@ -114,6 +115,27 @@ export class ApiClient {
 		} catch (error) {
 			console.error('[Obsidigram] Failed to publish post:', error);
 			new Notice(`Bot unreachable: ${error instanceof Error ? error.message : 'Unknown error'}`);
+			return null;
+		}
+	}
+
+	async getPlatforms(): Promise<PlatformsResponse | null> {
+		try {
+			const response = await fetch(`${this.baseUrl}/api/platforms`, {
+				method: 'GET',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+			});
+
+			if (!response.ok) {
+				throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+			}
+
+			return await response.json();
+		} catch (error) {
+			console.error('[Obsidigram] Failed to fetch platforms:', error);
+			// Don't show notice - this is optional
 			return null;
 		}
 	}

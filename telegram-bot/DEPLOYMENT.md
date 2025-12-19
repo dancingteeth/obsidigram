@@ -141,7 +141,7 @@ The `.env` file on the server should contain:
 
 ```env
 BOT_TOKEN=your_bot_token_here
-TELEGRAM_CHAT_ID=-1003377621214
+TELEGRAM_CHAT_ID=your_chat_id_here
 PORT=3001
 DATA_DIR=./data
 ```

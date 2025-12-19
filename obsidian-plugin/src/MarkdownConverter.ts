@@ -17,8 +17,9 @@ export class MarkdownConverter {
 		// Remove YAML frontmatter
 		content = content.replace(/^---\n[\s\S]*?\n---\n/, '');
 
-		// Remove internal #tg_* tags (tg_ready, tg_unpublished, tg_scheduled, tg_published, etc.)
-		content = content.replace(/#tg_\w+\s*/g, '');
+		// Remove internal workflow tags (all prefixes: tg_, cms_, fb_, thr_)
+		// These are scheduling/publishing workflow tags, not content tags
+		content = content.replace(/#(tg|cms|fb|thr)_\w+\s*/g, '');
 
 		// Clean up empty lines at the start
 		content = content.replace(/^\s*\n+/, '');

@@ -15,6 +15,12 @@ services:
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
       - PORT=${PORT:-3001}
       - DATA_DIR=${DATA_DIR:-./data}
+      # Facebook
+      - FB_PAGE_ID=${FB_PAGE_ID}
+      - FB_PAGE_ACCESS_TOKEN=${FB_PAGE_ACCESS_TOKEN}
+      # Threads (optional)
+      - THREADS_USER_ID=${THREADS_USER_ID}
+      - THREADS_ACCESS_TOKEN=${THREADS_ACCESS_TOKEN}
     volumes:
       - /root/obsidigram/data:/app/data
       - /root/obsidigram/logs:/app/logs

@@ -35,12 +35,12 @@ Turn your Obsidian vault into a headless CMS for Telegram. Monitor markdown file
    - `#tg_ready` - Marks the file as ready to schedule
    - `#tg_unpublished` - Marks the file as not yet published
    - One category tag:
-     - `#tg_research`
-     - `#tg_infrastructure_energy`
-     - `#tg_slop_misinformation`
-     - `#tg_security_fraud`
-     - `#tg_economy`
-     - `#tg_developer_ecosystem`
+     - `#tg_research`— R
+     - `#tg_infrastructure_energy` — I
+     - `#tg_slop_misinformation` — S
+     - `#tg_security_fraud` — F
+     - `#tg_economy` — E
+     - `#tg_developer_ecosystem` — D
 3. Save the file
 4. The scheduling modal will automatically open
 5. Select a time slot from the calendar grid

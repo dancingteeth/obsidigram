@@ -1,15 +1,40 @@
 import express, { Request, Response } from 'express';
-import { Storage } from './storage.js';
-import type { Scheduler } from './scheduler.js';
+import { Storage } from './storage';
+import type { Scheduler } from './scheduler';
 import type { 
 	ScheduleRequest, 
 	ScheduleResponse, 
 	BusySlot,
-	PublishedPost 
-} from './types.js';
+	PublishedPost,
+	Platform 
+} from './types';
 
 export function createApiRouter(storage: Storage, scheduler?: Scheduler) {
 	const router = express.Router();
+
+	// GET /api/platforms - Get configured platforms
+	router.get('/platforms', async (req: Request, res: Response) => {
+		try {
+			if (!scheduler) {
+				res.json({ 
+					platforms: ['telegram'],
+					verified: [{ platform: 'telegram', valid: true }]
+				});
+				return;
+			}
+
+			const platforms = scheduler.getConfiguredPlatforms();
+			const verified = await scheduler.verifyPlatforms();
+
+			res.json({ platforms, verified });
+		} catch (error) {
+			console.error('[API] Error getting platforms:', error);
+			res.status(500).json({ 
+				error: 'Internal server error',
+				message: error instanceof Error ? error.message : String(error)
+			});
+		}
+	});
 
 	// GET /api/schedule - Get busy slots
 	// Accepts optional query params:
@@ -39,7 +64,11 @@ export function createApiRouter(storage: Storage, scheduler?: Scheduler) {
 				// Convert to client's local time by subtracting the offset
 				const scheduledDateLocal = new Date(scheduledDateUTC.getTime() - tzOffset * 60 * 1000);
 				
-				const date = scheduledDateLocal.toISOString().split('T')[0]; // YYYY-MM-DD
+				// Extract date components from the adjusted time (using UTC methods since we already applied offset)
+				const year = scheduledDateLocal.getUTCFullYear();
+				const month = String(scheduledDateLocal.getUTCMonth() + 1).padStart(2, '0');
+				const day = String(scheduledDateLocal.getUTCDate()).padStart(2, '0');
+				const date = `${year}-${month}-${day}`; // YYYY-MM-DD in client's local time
 				const hours = scheduledDateLocal.getUTCHours().toString().padStart(2, '0');
 				const minutes = scheduledDateLocal.getUTCMinutes().toString().padStart(2, '0');
 				const time = `${hours}:${minutes}`; // HH:mm in client's local time
@@ -74,12 +103,24 @@ export function createApiRouter(storage: Storage, scheduler?: Scheduler) {
 			// Get today in client's local time
 			const nowUTC = new Date();
 			const nowLocal = new Date(nowUTC.getTime() - tzOffset * 60 * 1000);
-			const todayStr = nowLocal.toISOString().split('T')[0];
+			// Extract date in client's local time (using UTC methods since we already applied offset)
+			const todayYear = nowLocal.getUTCFullYear();
+			const todayMonth = String(nowLocal.getUTCMonth() + 1).padStart(2, '0');
+			const todayDay = String(nowLocal.getUTCDate()).padStart(2, '0');
+			const todayStr = `${todayYear}-${todayMonth}-${todayDay}`;
+			
+			console.log(`[API] Client today: ${todayStr} (tzOffset: ${tzOffset}, server UTC: ${nowUTC.toISOString()})`);
 
+			// Track which slots we've added (to avoid duplicates)
+			const addedSlots = new Set<string>();
+			
 			for (let i = 0; i < 7; i++) {
-				const date = new Date(todayStr);
+				const date = new Date(todayStr + 'T12:00:00Z'); // Use noon to avoid DST issues
 				date.setUTCDate(date.getUTCDate() + i);
-				const dateStr = date.toISOString().split('T')[0];
+				const dateYear = date.getUTCFullYear();
+				const dateMonth = String(date.getUTCMonth() + 1).padStart(2, '0');
+				const dateDay = String(date.getUTCDate()).padStart(2, '0');
+				const dateStr = `${dateYear}-${dateMonth}-${dateDay}`;
 
 				timeSlots.forEach(time => {
 					const slotKey = `${dateStr}_${time}`;
@@ -97,15 +138,40 @@ export function createApiRouter(storage: Storage, scheduler?: Scheduler) {
 							contentPreview: slotInfo.contentPreview,
 						}),
 					});
+					addedSlots.add(slotKey);
 				});
 			}
+			
+			// Also include any custom (non-standard) time slots that have scheduled posts
+			// This allows the client to display today's custom-scheduled posts
+			console.log(`[API] Checking for custom slots. addedSlots count: ${addedSlots.size}, busySlotsMap count: ${busySlotsMap.size}`);
+			busySlotsMap.forEach((slotInfo, slotKey) => {
+				const alreadyAdded = addedSlots.has(slotKey);
+				console.log(`[API] Custom slot check: ${slotKey} - already added: ${alreadyAdded}`);
+				if (!alreadyAdded) {
+					const [date, time] = slotKey.split('_');
+					console.log(`[API] Adding custom slot: ${slotKey}`);
+					slots.push({
+						date,
+						time,
+						isBusy: true,
+						category: slotInfo.category,
+						fileId: slotInfo.fileId,
+						contentPreview: slotInfo.contentPreview,
+					});
+					addedSlots.add(slotKey);
+				}
+			});
 			
 			console.log(`[API] Busy slots in response: ${slots.filter(s => s.isBusy).map(s => `${s.date}_${s.time}`).join(', ') || 'none'}`);
 			
 			res.json({ slots });
 		} catch (error) {
 			console.error('[API] Error getting busy slots:', error);
-			res.status(500).json({ error: 'Internal server error' });
+			res.status(500).json({ 
+				error: 'Internal server error',
+				message: error instanceof Error ? error.message : String(error)
+			});
 		}
 	});
 
@@ -133,7 +199,39 @@ export function createApiRouter(storage: Storage, scheduler?: Scheduler) {
 				return;
 			}
 
-			// Generate unique ID
+			// Idempotency check: if this file is already scheduled, update it instead of creating duplicate
+			const existingPosts = storage.getScheduledPosts();
+			const existingPost = existingPosts.find(p => p.file_id === request.file_id);
+			
+			if (existingPost) {
+				// Update existing scheduled post
+				console.log(`[API] Updating existing scheduled post for ${request.file_id}`);
+				storage.updatePost(existingPost.id, {
+					content: request.content,
+					scheduled_time: request.scheduled_time,
+					category: request.category,
+					tags: request.tags || [],
+					platforms: (request.platforms && request.platforms.length > 0) ? request.platforms : ['telegram'],
+				});
+				
+				console.log('\n' + '─'.repeat(50));
+				console.log(`📝 POST RESCHEDULED (was already scheduled)`);
+				console.log('─'.repeat(50));
+				console.log(`  🆔 ID: ${existingPost.id}`);
+				console.log(`  📁 File: ${request.file_id}`);
+				console.log(`  🏷️  Category: ${request.category}`);
+				console.log(`  ⏰ New time: ${scheduledDate.toISOString()}`);
+				console.log('─'.repeat(50) + '\n');
+
+				res.json({
+					success: true,
+					message: 'Post rescheduled successfully (updated existing)',
+					scheduled_id: existingPost.id,
+				});
+				return;
+			}
+
+			// Generate unique ID for new post
 			const id = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
 			// Create scheduled post
@@ -145,6 +243,7 @@ export function createApiRouter(storage: Storage, scheduler?: Scheduler) {
 				category: request.category,
 				tags: request.tags || [],
 				status: 'scheduled' as const,
+				platforms: (request.platforms && request.platforms.length > 0) ? request.platforms : ['telegram'] as Platform[],
 			};
 
 			storage.addPost(post);
@@ -172,6 +271,7 @@ export function createApiRouter(storage: Storage, scheduler?: Scheduler) {
 			res.status(500).json({
 				success: false,
 				message: 'Internal server error',
+				error: error instanceof Error ? error.message : String(error)
 			});
 		}
 	});
@@ -183,7 +283,10 @@ export function createApiRouter(storage: Storage, scheduler?: Scheduler) {
 			res.json({ posts: publishedPosts });
 		} catch (error) {
 			console.error('[API] Error getting published posts:', error);
-			res.status(500).json({ error: 'Internal server error' });
+			res.status(500).json({ 
+				error: 'Internal server error',
+				message: error instanceof Error ? error.message : String(error)
+			});
 		}
 	});
 
@@ -221,6 +324,7 @@ export function createApiRouter(storage: Storage, scheduler?: Scheduler) {
 				category: request.category,
 				tags: request.tags || [],
 				status: 'scheduled' as const,
+				platforms: (request.platforms && request.platforms.length > 0) ? request.platforms : ['telegram'] as Platform[],
 			};
 
 			// Add to storage temporarily
@@ -229,7 +333,11 @@ export function createApiRouter(storage: Storage, scheduler?: Scheduler) {
 			// Publish immediately
 			const result = await scheduler.publishPostNow(post);
 
-			if (result.success) {
+			// Check if any platform succeeded
+			const anySuccess = result.platformResults?.some(r => r.success) ?? result.success;
+			const allSuccess = result.success;
+
+			if (anySuccess) {
 				console.log('\n' + '─'.repeat(50));
 				console.log(`📤 POST PUBLISHED IMMEDIATELY (via API)`);
 				console.log('─'.repeat(50));
@@ -237,19 +345,22 @@ export function createApiRouter(storage: Storage, scheduler?: Scheduler) {
 				console.log(`  📁 File: ${request.file_id}`);
 				console.log(`  🏷️  Category: ${request.category}`);
 				console.log(`  💬 Message ID: ${result.messageId}`);
+				console.log(`  📊 All succeeded: ${allSuccess}`);
 				console.log('─'.repeat(50) + '\n');
 
 				res.json({
-					success: true,
-					message: 'Post published successfully',
+					success: allSuccess,
+					message: allSuccess ? 'Post published successfully' : 'Post partially published',
 					message_id: result.messageId,
+					platform_results: result.platformResults,
 				});
 			} else {
-				// Remove from storage if publish failed
+				// Remove from storage if ALL platforms failed
 				storage.deletePost(id);
 				res.status(500).json({
 					success: false,
 					message: result.error || 'Failed to publish post',
+					platform_results: result.platformResults,
 				});
 			}
 		} catch (error) {
@@ -257,6 +368,7 @@ export function createApiRouter(storage: Storage, scheduler?: Scheduler) {
 			res.status(500).json({
 				success: false,
 				message: 'Internal server error',
+				error: error instanceof Error ? error.message : String(error)
 			});
 		}
 	});

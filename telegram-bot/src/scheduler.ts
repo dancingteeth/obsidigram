@@ -1,16 +1,35 @@
 import cron from 'node-cron';
 import { Bot } from 'grammy';
-import { Storage } from './storage.js';
-import type { ScheduledPost } from './types.js';
+import { Storage } from './storage';
+import { MultiPlatformPublisher, Platform } from './publishers/index';
+import type { ScheduledPost, PlatformPublishResult } from './types';
 
 export class Scheduler {
 	private bot: Bot;
 	private storage: Storage;
 	private cronJob: cron.ScheduledTask | null = null;
+	private publisher: MultiPlatformPublisher;
 
 	constructor(bot: Bot, storage: Storage) {
 		this.bot = bot;
 		this.storage = storage;
+		
+		const chatId = process.env.TELEGRAM_CHAT_ID || '';
+		this.publisher = new MultiPlatformPublisher(bot, chatId);
+	}
+
+	/**
+	 * Get configured platforms
+	 */
+	getConfiguredPlatforms(): Platform[] {
+		return this.publisher.getConfiguredPlatforms();
+	}
+
+	/**
+	 * Verify all platform tokens
+	 */
+	async verifyPlatforms() {
+		return this.publisher.verifyAllTokens();
 	}
 
 	start(): void {
@@ -151,8 +170,13 @@ export class Scheduler {
 		for (const post of scheduledPosts) {
 			const scheduledTime = new Date(post.scheduled_time);
 			
-			// Check if it's time to publish (within the current minute)
-			if (scheduledTime <= now && scheduledTime.getTime() > now.getTime() - 60000) {
+			// Publish if scheduled time has passed (including overdue posts)
+			// This handles both normal scheduling and catch-up after bot restart
+			if (scheduledTime <= now) {
+				const overdueMinutes = Math.floor((now.getTime() - scheduledTime.getTime()) / 60000);
+				if (overdueMinutes > 1) {
+					console.log(`[Scheduler] Publishing overdue post (${overdueMinutes} min late): ${post.file_id}`);
+				}
 				await this.publishPost(post);
 			}
 		}
@@ -164,49 +188,74 @@ export class Scheduler {
 
 	/**
 	 * Publish a post immediately (can be called from bot commands)
-	 * Returns true if successful, false otherwise
+	 * Publishes to all configured platforms for this post
 	 */
-	async publishPostNow(post: ScheduledPost): Promise<{ success: boolean; messageId?: number; error?: string }> {
+	async publishPostNow(post: ScheduledPost): Promise<{ 
+		success: boolean; 
+		messageId?: number; 
+		error?: string;
+		platformResults?: PlatformPublishResult[];
+	}> {
 		try {
-			// Get chat ID from environment or use a default
-			// In production, you might want to store this per post or in config
-			const chatId = process.env.TELEGRAM_CHAT_ID || post.chat_id;
+			// Determine target platforms (default to telegram for backwards compatibility)
+			const targetPlatforms = (post.platforms && post.platforms.length > 0) ? post.platforms : ['telegram'] as Platform[];
 			
-			if (!chatId) {
-				console.error(`[Scheduler] No chat ID configured for post ${post.id}`);
-				this.storage.updatePost(post.id, { status: 'failed' });
-				return { success: false, error: 'No chat ID configured' };
-			}
-
-			// Send message to Telegram
-			const message = await this.bot.api.sendMessage(chatId, post.content, {
-				parse_mode: 'HTML',
-			});
-
-			// Update post status
-			this.storage.updatePost(post.id, {
-				status: 'published',
-				published_at: new Date().toISOString(),
-				chat_id: chatId,
-				message_id: message.message_id,
-			});
-
-			console.log('\n' + '🎉'.repeat(25));
-			console.log(`✅ POST PUBLISHED SUCCESSFULLY`);
+			console.log('\n' + '📤'.repeat(25));
+			console.log(`📤 PUBLISHING POST TO: ${targetPlatforms.join(', ')}`);
 			console.log('─'.repeat(50));
 			console.log(`  🆔 ID: ${post.id}`);
 			console.log(`  📁 File: ${post.file_id}`);
 			console.log(`  🏷️  Category: ${post.category}`);
-			console.log(`  💬 Message ID: ${message.message_id}`);
-			console.log(`  📺 Chat ID: ${chatId}`);
 			console.log('─'.repeat(50));
-			console.log('🎉'.repeat(25) + '\n');
 
-			return { success: true, messageId: message.message_id };
-		} catch (error: any) {
+			// Publish to all target platforms
+			const result = await this.publisher.publishToMultiple(targetPlatforms, post.content);
+
+			// Log results per platform
+			for (const r of result.results) {
+				if (r.success) {
+					console.log(`  ✅ ${r.platform}: Success (ID: ${r.postId || r.messageId})`);
+				} else {
+					console.log(`  ❌ ${r.platform}: Failed - ${r.error}`);
+				}
+			}
+
+			// Determine overall status
+			const allSuccess = result.allSuccessful;
+			const anySuccess = result.results.some(r => r.success);
+			const status = allSuccess ? 'published' : (anySuccess ? 'partial' : 'failed');
+
+			// Get Telegram message ID for backwards compatibility
+			const telegramResult = result.results.find(r => r.platform === 'telegram');
+			const messageId = telegramResult?.messageId;
+			const chatId = process.env.TELEGRAM_CHAT_ID || post.chat_id;
+
+			// Update post status
+			this.storage.updatePost(post.id, {
+				status,
+				published_at: new Date().toISOString(),
+				chat_id: chatId,
+				message_id: messageId,
+				platform_results: result.results,
+			});
+
+			console.log('─'.repeat(50));
+			console.log(`  📊 Status: ${status.toUpperCase()}`);
+			console.log('📤'.repeat(25) + '\n');
+
+			return { 
+				success: allSuccess, 
+				messageId,
+				platformResults: result.results,
+				error: allSuccess ? undefined : result.results.filter(r => !r.success).map(r => `${r.platform}: ${r.error}`).join('; ')
+			};
+		} catch (error) {
 			console.error(`[Scheduler] Failed to publish post ${post.id}:`, error);
 			this.storage.updatePost(post.id, { status: 'failed' });
-			return { success: false, error: error?.message || 'Unknown error' };
+			return { 
+				success: false, 
+				error: error instanceof Error ? error.message : String(error) 
+			};
 		}
 	}
 }
