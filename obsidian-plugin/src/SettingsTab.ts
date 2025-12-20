@@ -112,10 +112,13 @@ export class ObsidigramSettingTab extends PluginSettingTab {
 			new Setting(containerEl)
 				.setName('Mistral Model')
 				.addDropdown(dropdown => {
-					dropdown.addOption('mistral-large-latest', 'Mistral Large (best quality)');
-					dropdown.addOption('mistral-medium-latest', 'Mistral Medium');
-					dropdown.addOption('mistral-small-latest', 'Mistral Small (fastest)');
-					dropdown.addOption('codestral-latest', 'Codestral (best for code)');
+					dropdown.addOption('mistral-large-latest', 'Mistral Large 3 (Best quality)');
+					dropdown.addOption('mistral-medium-latest', 'Mistral Medium 3.1 (Balanced)');
+					dropdown.addOption('mistral-small-latest', 'Mistral Small 3.2 (Fastest)');
+					dropdown.addOption('codestral-latest', 'Codestral (Best for code)');
+					dropdown.addOption('ministral-3b-latest', 'Ministral 3B (Edge/Lite)');
+					dropdown.addOption('ministral-8b-latest', 'Ministral 8B (Edge/Smart)');
+					dropdown.addOption('magistral-medium-latest', 'Magistral Medium (Reasoning)');
 					dropdown.setValue(this.plugin.settings.mistralModel);
 					dropdown.onChange(async (value) => {
 						this.plugin.settings.mistralModel = value as any;

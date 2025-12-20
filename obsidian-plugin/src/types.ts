@@ -38,7 +38,7 @@ export interface ObsidigramSettings {
 	geminiModel: 'gemini-2.0-flash' | 'gemini-1.5-flash' | 'gemini-1.5-pro';
 	
 	/** Mistral model to use */
-	mistralModel: 'mistral-large-latest' | 'mistral-medium-latest' | 'mistral-small-latest' | 'codestral-latest';
+	mistralModel: 'mistral-large-latest' | 'mistral-medium-latest' | 'mistral-small-latest' | 'codestral-latest' | 'ministral-3b-latest' | 'ministral-8b-latest' | 'magistral-medium-latest';
 	
 	/** Groq API key for fast inference - Fast preset */
 	groqApiKey: string;
