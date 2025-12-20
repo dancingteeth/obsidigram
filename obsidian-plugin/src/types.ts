@@ -37,6 +37,9 @@ export interface ObsidigramSettings {
 	/** Gemini model to use */
 	geminiModel: 'gemini-2.0-flash' | 'gemini-1.5-flash' | 'gemini-1.5-pro';
 	
+	/** Mistral model to use */
+	mistralModel: 'mistral-large-latest' | 'mistral-medium-latest' | 'mistral-small-latest' | 'codestral-latest';
+	
 	/** Groq API key for fast inference - Fast preset */
 	groqApiKey: string;
 	
@@ -89,6 +92,9 @@ export const DEFAULT_SETTINGS: ObsidigramSettings = {
 	// Gemini (Context preset)
 	geminiApiKey: '',
 	geminiModel: 'gemini-2.0-flash',
+	
+	// Mistral (Proofread preset)
+	mistralModel: 'mistral-medium-latest',
 	
 	// Groq (Fast preset)
 	groqApiKey: '',

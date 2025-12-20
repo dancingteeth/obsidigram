@@ -109,6 +109,20 @@ export class ObsidigramSettingTab extends PluginSettingTab {
 					});
 				});
 
+			new Setting(containerEl)
+				.setName('Mistral Model')
+				.addDropdown(dropdown => {
+					dropdown.addOption('mistral-large-latest', 'Mistral Large (best quality)');
+					dropdown.addOption('mistral-medium-latest', 'Mistral Medium');
+					dropdown.addOption('mistral-small-latest', 'Mistral Small (fastest)');
+					dropdown.addOption('codestral-latest', 'Codestral (best for code)');
+					dropdown.setValue(this.plugin.settings.mistralModel);
+					dropdown.onChange(async (value) => {
+						this.plugin.settings.mistralModel = value as any;
+						await this.plugin.saveSettings();
+					});
+				});
+
 			// Groq
 			containerEl.createEl('h3', { text: '⚡ Fast Preset (Groq)' });
 			new Setting(containerEl)

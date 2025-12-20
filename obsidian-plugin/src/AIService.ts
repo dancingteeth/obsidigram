@@ -189,6 +189,7 @@ export class AIService {
 		const apiKey = this.plugin.settings.mistralApiKey;
 		if (!apiKey) throw new Error('Mistral API key not configured');
 		
+		const model = this.plugin.settings.mistralModel || 'mistral-medium-latest';
 		const url = `${MISTRAL_API_BASE}/chat/completions`;
 		
 		const response = await fetch(url, {
@@ -198,7 +199,7 @@ export class AIService {
 				'Authorization': `Bearer ${apiKey}`,
 			},
 			body: JSON.stringify({
-				model: 'mistral-medium',
+				model: model,
 				messages: [{ role: 'user', content: prompt }],
 				max_tokens: maxTokens,
 				temperature: 0.3,
