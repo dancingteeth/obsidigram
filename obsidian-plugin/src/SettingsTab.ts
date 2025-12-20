@@ -86,7 +86,7 @@ export class ObsidigramSettingTab extends PluginSettingTab {
 			containerEl.createEl('h3', { text: '🧠 Mistral Preset' });
 			new Setting(containerEl)
 				.setName('Mistral API Key')
-				.setDesc('API key for proofreading and grammar checking')
+				.setDesc('API key for proofreading and grammar checking. Get your free key at the Mistral Console: https://console.mistral.ai/home?workspace_dialog=apiKeys')
 				.addText((text: TextComponent) => {
 					text.setPlaceholder('Mistral API Key');
 					text.setValue(this.plugin.settings.mistralApiKey || '');
