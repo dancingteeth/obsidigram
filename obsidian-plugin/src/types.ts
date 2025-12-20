@@ -49,6 +49,9 @@ export interface ObsidigramSettings {
 	/** Default AI preset */
 	defaultAIPreset: 'fast' | 'context' | 'mistral';
 	
+	/** Default preset for proofreading */
+	defaultProofreadPreset: 'fast' | 'context' | 'mistral';
+	
 	// ============================================
 	// Translation Settings
 	// ============================================
@@ -102,6 +105,7 @@ export const DEFAULT_SETTINGS: ObsidigramSettings = {
 	
 	// Default preset
 	defaultAIPreset: 'fast',
+	defaultProofreadPreset: 'mistral',
 	
 	// Translation
 	enableTranslation: true,

@@ -204,6 +204,36 @@ export class ObsidigramSettingTab extends PluginSettingTab {
 					});
 				});
 
+			containerEl.createEl('h3', { text: 'Default AI Behaviors' });
+
+			new Setting(containerEl)
+				.setName('Default Translation Preset')
+				.setDesc('Which AI service to use for translation by default')
+				.addDropdown(dropdown => {
+					dropdown.addOption('fast', 'Fast Preset (Groq)');
+					dropdown.addOption('context', 'Context Preset (Gemini)');
+					dropdown.addOption('mistral', 'Mistral Preset');
+					dropdown.setValue(this.plugin.settings.defaultAIPreset);
+					dropdown.onChange(async (value) => {
+						this.plugin.settings.defaultAIPreset = value as any;
+						await this.plugin.saveSettings();
+					});
+				});
+
+			new Setting(containerEl)
+				.setName('Default Proofread Preset')
+				.setDesc('Which AI service to use for the Proofread command')
+				.addDropdown(dropdown => {
+					dropdown.addOption('mistral', 'Mistral Preset');
+					dropdown.addOption('fast', 'Fast Preset (Groq)');
+					dropdown.addOption('context', 'Context Preset (Gemini)');
+					dropdown.setValue(this.plugin.settings.defaultProofreadPreset);
+					dropdown.onChange(async (value) => {
+						this.plugin.settings.defaultProofreadPreset = value as any;
+						await this.plugin.saveSettings();
+					});
+				});
+
 			// Translation Section
 			containerEl.createEl('h2', { text: '🌐 Translation' });
 			

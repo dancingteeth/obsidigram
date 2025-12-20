@@ -266,12 +266,16 @@ TRANSLATED TEXT:`;
 	 */
 	async proofread(text: string): Promise<string> {
 		const prompt = `You are a professional proofreader and editor. Your task is to proofread the provided text for grammar, punctuation, spelling, and clarity. Return ONLY the proofread text without any explanations or comments. Preserve the original formatting and style as much as possible.
+		
+IMPORTANT: Return ONLY the corrected text.
 
 TEXT:
 ${text}`;
 
+		const preset = this.plugin.settings.defaultProofreadPreset || 'mistral';
+		
 		try {
-			return await this.callAPI(prompt, Math.max(text.length * 2, 500), 'mistral');
+			return await this.callAPI(prompt, Math.max(text.length * 2, 500), preset);
 		} catch (error) {
 			console.error('[Obsidigram AI] Proofreading failed:', error);
 			throw new Error('Proofreading failed. Check console for details.');
