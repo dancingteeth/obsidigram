@@ -84,10 +84,16 @@ export class ObsidigramSettingTab extends PluginSettingTab {
 		if (this.plugin.settings.enableAI) {
 			// Mistral
 			containerEl.createEl('h3', { text: '🧠 Mistral Preset' });
-			new Setting(containerEl)
-				.setName('Mistral API Key')
-				.setDesc('API key for proofreading and grammar checking. Get your free key at the Mistral Console: https://console.mistral.ai/home?workspace_dialog=apiKeys')
-				.addText((text: TextComponent) => {
+			const mistralSetting = new Setting(containerEl)
+				.setName('Mistral API Key');
+			
+			mistralSetting.descEl.createSpan({ text: 'API key for proofreading and grammar checking. Get your free key at the ' });
+			mistralSetting.descEl.createEl('a', {
+				text: 'Mistral Console →',
+				href: 'https://console.mistral.ai/home?workspace_dialog=apiKeys'
+			});
+
+			mistralSetting.addText((text: TextComponent) => {
 					text.setPlaceholder('Mistral API Key');
 					text.setValue(this.plugin.settings.mistralApiKey || '');
 					text.inputEl.style.width = '300px';
@@ -127,10 +133,16 @@ export class ObsidigramSettingTab extends PluginSettingTab {
 
 			// Groq
 			containerEl.createEl('h3', { text: '⚡ Fast Preset (Groq)' });
-			new Setting(containerEl)
-				.setName('Groq API Key')
-				.setDesc('Extremely fast inference (300+ tokens/sec). Get key at console.groq.com')
-				.addText((text: TextComponent) => {
+			const groqSetting = new Setting(containerEl)
+				.setName('Groq API Key');
+			
+			groqSetting.descEl.createSpan({ text: 'Extremely fast inference (300+ tokens/sec). ' });
+			groqSetting.descEl.createEl('a', {
+				text: 'Get free API key →',
+				href: 'https://console.groq.com/keys'
+			});
+
+			groqSetting.addText((text: TextComponent) => {
 					text.setPlaceholder('gsk_...');
 					text.setValue(this.plugin.settings.groqApiKey || '');
 					text.inputEl.style.width = '300px';
@@ -166,10 +178,16 @@ export class ObsidigramSettingTab extends PluginSettingTab {
 
 			// Gemini
 			containerEl.createEl('h3', { text: '📚 Context Preset (Gemini)' });
-			new Setting(containerEl)
-				.setName('Gemini API Key')
-				.setDesc('Massive context window. Get key at aistudio.google.com')
-				.addText((text: TextComponent) => {
+			const geminiSetting = new Setting(containerEl)
+				.setName('Gemini API Key');
+			
+			geminiSetting.descEl.createSpan({ text: 'Massive context window. ' });
+			geminiSetting.descEl.createEl('a', {
+				text: 'Get free API key →',
+				href: 'https://aistudio.google.com/app/apikey'
+			});
+
+			geminiSetting.addText((text: TextComponent) => {
 					text.setPlaceholder('AIza...');
 					text.setValue(this.plugin.settings.geminiApiKey || '');
 					text.inputEl.style.width = '300px';
