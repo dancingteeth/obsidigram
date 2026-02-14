@@ -21,9 +21,9 @@ export interface ScheduledPost {
 	platforms?: Platform[];
 	// Results per platform
 	platform_results?: PlatformPublishResult[];
-	// Legacy Telegram-specific fields (kept for backwards compatibility)
-	chat_id?: string; // Telegram chat ID where it was posted
-	message_id?: number; // Telegram message ID
+	// Target channel for this post (required for multi-tenant)
+	chat_id: string;
+	message_id?: number; // Telegram message ID after publish
 }
 
 export interface ScheduleRequest {
@@ -33,7 +33,8 @@ export interface ScheduleRequest {
 	scheduled_time: string;
 	category: string;
 	tags: string[];
-	platforms?: Platform[]; // Target platforms (defaults to ['telegram'])
+	platforms?: Platform[];
+	chat_id?: string; // Set by API from authenticated user; client must not override
 }
 
 export interface ScheduleResponse {

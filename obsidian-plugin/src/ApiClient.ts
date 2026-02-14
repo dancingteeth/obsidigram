@@ -11,40 +11,51 @@ import type {
 
 export class ApiClient {
 	private baseUrl: string;
+	private apiKey: string;
 
-	constructor(baseUrl: string) {
-		this.baseUrl = baseUrl.replace(/\/$/, ''); // Remove trailing slash
+	constructor(baseUrl: string, apiKey: string) {
+		this.baseUrl = baseUrl.replace(/\/$/, '');
+		this.apiKey = apiKey || '';
+	}
+
+	private headers(): Record<string, string> {
+		const h: Record<string, string> = { 'Content-Type': 'application/json' };
+		if (this.apiKey) {
+			h['Authorization'] = `Bearer ${this.apiKey}`;
+		}
+		return h;
+	}
+
+	private async handleResponse<T>(response: Response, parse: () => Promise<T>): Promise<T | null> {
+		if (response.status === 401) {
+			new Notice('Invalid API key. Get one from @obsidigram_cms_bot');
+			return null;
+		}
+		if (!response.ok) {
+			throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+		}
+		return await parse();
 	}
 
 	async getBusySlots(timeSlots?: string[]): Promise<BusySlotsResponse | null> {
 		try {
 			let url = `${this.baseUrl}/api/schedule`;
 			const params = new URLSearchParams();
-			
 			if (timeSlots && timeSlots.length > 0) {
 				params.set('timeSlots', timeSlots.join(','));
 			}
-			
-			// Send timezone offset so server can convert UTC times to local for comparison
-			const timezoneOffset = new Date().getTimezoneOffset(); // minutes, negative for UTC+
+			const timezoneOffset = new Date().getTimezoneOffset();
 			params.set('tzOffset', timezoneOffset.toString());
-			
 			if (params.toString()) {
 				url += `?${params.toString()}`;
 			}
-			
 			const response = await fetch(url, {
 				method: 'GET',
-				headers: {
-					'Content-Type': 'application/json',
-				},
+				headers: this.headers(),
 			});
-
-			if (!response.ok) {
-				throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-			}
-
-			return await response.json();
+			const data = await this.handleResponse(response, () => response.json());
+			if (data === null) return null;
+			return data as BusySlotsResponse;
 		} catch (error) {
 			console.error('[Obsidigram] Failed to fetch busy slots:', error);
 			new Notice('Bot unreachable: Could not fetch schedule');
@@ -56,18 +67,12 @@ export class ApiClient {
 		try {
 			const response = await fetch(`${this.baseUrl}/api/schedule`, {
 				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
+				headers: this.headers(),
 				body: JSON.stringify(request),
 			});
-
-			if (!response.ok) {
-				const errorText = await response.text();
-				throw new Error(`HTTP ${response.status}: ${errorText}`);
-			}
-
-			return await response.json();
+			const data = await this.handleResponse(response, () => response.json());
+			if (data === null) return null;
+			return data as ScheduleResponse;
 		} catch (error) {
 			console.error('[Obsidigram] Failed to schedule post:', error);
 			new Notice(`Bot unreachable: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -79,16 +84,11 @@ export class ApiClient {
 		try {
 			const response = await fetch(`${this.baseUrl}/api/published`, {
 				method: 'GET',
-				headers: {
-					'Content-Type': 'application/json',
-				},
+				headers: this.headers(),
 			});
-
-			if (!response.ok) {
-				throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-			}
-
-			return await response.json();
+			const data = await this.handleResponse(response, () => response.json());
+			if (data === null) return null;
+			return data as PublishedResponse;
 		} catch (error) {
 			console.error('[Obsidigram] Failed to fetch published posts:', error);
 			new Notice('Bot unreachable: Could not fetch published posts');
@@ -100,18 +100,12 @@ export class ApiClient {
 		try {
 			const response = await fetch(`${this.baseUrl}/api/publish`, {
 				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
+				headers: this.headers(),
 				body: JSON.stringify(request),
 			});
-
-			if (!response.ok) {
-				const errorText = await response.text();
-				throw new Error(`HTTP ${response.status}: ${errorText}`);
-			}
-
-			return await response.json();
+			const data = await this.handleResponse(response, () => response.json());
+			if (data === null) return null;
+			return data as PublishResponse;
 		} catch (error) {
 			console.error('[Obsidigram] Failed to publish post:', error);
 			new Notice(`Bot unreachable: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -123,19 +117,12 @@ export class ApiClient {
 		try {
 			const response = await fetch(`${this.baseUrl}/api/platforms`, {
 				method: 'GET',
-				headers: {
-					'Content-Type': 'application/json',
-				},
+				headers: this.headers(),
 			});
-
-			if (!response.ok) {
-				throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-			}
-
-			return await response.json();
+			const data = await this.handleResponse(response, () => response.json());
+			return data as PlatformsResponse | null;
 		} catch (error) {
 			console.error('[Obsidigram] Failed to fetch platforms:', error);
-			// Don't show notice - this is optional
 			return null;
 		}
 	}

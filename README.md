@@ -1,110 +1,54 @@
----
-tags:
-  - documentation
-  - obsidigram
----
 # Obsidigram
 
-Turn Obsidian into a headless CMS for Telegram. Schedule and publish your notes directly from Obsidian to Telegram.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Obsidian](https://img.shields.io/badge/Obsidian-Plugin-7c3aed)](https://obsidian.md)
 
-## Architecture
+Turn Obsidian into a headless CMS for Telegram and more. Schedule and publish your notes from Obsidian to Telegram, Facebook, and Threads.
 
-This project consists of two components:
+## Features
 
-1. **Obsidian Plugin** (`obsidian-plugin/`) - Monitors your vault, provides scheduling UI, and syncs status
-2. **Telegram Bot** (`telegram-bot/`) - Receives scheduled posts via HTTP API and publishes them at the right time
+- **Tag-based workflow** — Add `#tg_ready` and `#tg_unpublished` to schedule
+- **Calendar scheduling** — Pick time slots from a visual grid
+- **Multi-platform** — Telegram, Facebook, Threads
+- **AI (BYOK)** — Translation and proofreading with your own Mistral, Groq, or Gemini keys
+- **Status sync** — Published tags update automatically in your vault
 
 ## Quick Start
 
-### 1. Set up the Telegram Bot
+1. **[Install](INSTALLATION.md)** — Download the plugin and enable it in Obsidian
+2. **[Get API key](BOT_SETUP.md)** — Open @obsidigram_cms_bot, forward a message from your channel, add bot as admin, /verify, copy API key into Obsidian
+3. **Schedule** — Tag a note with `#tg_ready` `#tg_unpublished` + category, save, pick a slot
 
-```bash
-cd telegram-bot
-npm install
-cp .env.example .env
-# Edit .env with your bot token and chat ID
-npm run build
-npm start
-```
+See [USER_GUIDE.md](USER_GUIDE.md) for the full workflow.
 
-### 2. Set up the Obsidian Plugin
+## Documentation
 
-```bash
-cd obsidian-plugin
-npm install
-npm run build
-# Copy the plugin folder to your Obsidian vault's .obsidian/plugins/ directory
-```
+| Guide | Description |
+|-------|-------------|
+| [INSTALLATION.md](INSTALLATION.md) | Install and enable the plugin |
+| [BOT_SETUP.md](BOT_SETUP.md) | Get API key from @obsidigram_cms_bot and link your channel |
+| [USER_GUIDE.md](USER_GUIDE.md) | Tag system, scheduling, AI features |
+| [PRIVACY.md](PRIVACY.md) | Data and privacy |
 
-### 3. Configure the Plugin
+## Screenshots
 
-1. Open Obsidian Settings → Community Plugins → Installed Plugins
-2. Enable "Obsidigram"
-3. Go to Settings → Obsidigram
-4. Set the Bot API URL (e.g., `http://localhost:3001` or your server URL like `http://149.102.148.156:3001`)
+*Coming soon — scheduling modal, settings*
 
-### 4. Start Scheduling Posts
+## Support
 
-1. Create a markdown file with `#tg_ready` and `#tg_unpublished` tags
-2. Add a category tag (e.g., `#tg_research`)
-3. Save the file - the scheduling modal will open automatically
-4. Select a time slot and schedule!
+- [GitHub Issues](https://github.com/dancingteeth/obsidigram/issues) — Bugs and feature requests
 
-## Project Structure
+## Architecture (for developers)
 
-```
-obsidigram/
-├── obsidian-plugin/          # Obsidian plugin
-│   ├── src/
-│   │   ├── FileWatcher.ts    # Monitors files for tags
-│   │   ├── SchedulingModal.ts # Calendar UI for scheduling
-│   │   ├── ApiClient.ts      # HTTP client for bot API
-│   │   ├── SettingsTab.ts    # Plugin settings UI
-│   │   └── types.ts          # TypeScript types
-│   ├── main.ts               # Plugin entry point
-│   └── package.json
-│
-└── telegram-bot/            # grammY bot server
-    ├── src/
-    │   ├── index.ts          # Bot and HTTP server setup
-    │   ├── api.ts            # Express API routes
-    │   ├── scheduler.ts      # Cron job for posting
-    │   ├── storage.ts        # File-based persistence
-    │   └── types.ts          # TypeScript types
-    └── package.json
-```
+- **Obsidian Plugin** (`obsidian-plugin/`) — File watcher, scheduling UI, API client
+- **Telegram Bot** (`telegram-bot/`) — HTTP API, cron scheduler, multi-platform publisher
 
-## API Endpoints
-
-The bot exposes the following HTTP endpoints:
-
-- `GET /api/schedule` - Get busy time slots
-- `POST /api/schedule` - Schedule a new post
-- `GET /api/published` - Get published posts (for sync)
-
-## Workflow
-
-1. **User saves a file** with `#tg_ready` and `#tg_unpublished` tags
-2. **Plugin detects** the file and opens scheduling modal
-3. **User selects** a time slot from the calendar
-4. **Plugin sends** POST request to bot API with content and schedule time
-5. **Bot stores** the scheduled post
-6. **Cron job** checks every minute for posts to publish
-7. **Bot sends** message to Telegram when it's time
-8. **Plugin syncs** published status back to vault files
-
-## Environment Variables (Bot)
-
-- `BOT_TOKEN` - Your Telegram bot token (required)
-- `TELEGRAM_CHAT_ID` - Chat ID where posts should be sent (required)
-- `PORT` - HTTP server port (default: 3001)
-- `DATA_DIR` - Directory for storing scheduled posts (default: ./data)
+API: `GET/POST /api/schedule`, `GET /api/published`, `POST /api/publish`
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE)
 
 ## Author
 
-dancingteeth
-
+dancingteeth (Paul Zgordan)

@@ -52,7 +52,7 @@ export class SchedulingModal extends Modal {
 		this.category = category;
 		this.readOnly = readOnly;
 		this.intendedPlatforms = intendedPlatforms;
-		this.apiClient = new ApiClient(plugin.settings.botApiUrl);
+		this.apiClient = new ApiClient(plugin.settings.botApiUrl, plugin.settings.apiKey || '');
 	}
 
 	async onOpen(): Promise<void> {

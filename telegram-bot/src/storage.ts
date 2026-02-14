@@ -86,9 +86,24 @@ export class Storage {
 		return Array.from(this.posts.values()).filter(p => p.status === 'scheduled');
 	}
 
+	getScheduledPostsByChatId(chatId: string): ScheduledPost[] {
+		return Array.from(this.posts.values()).filter(
+			p => p.status === 'scheduled' && p.chat_id === chatId
+		);
+	}
+
 	getPublishedPosts(): { file_id: string; published_at: string }[] {
 		return Array.from(this.posts.values())
 			.filter(p => p.status === 'published' && p.published_at)
+			.map(p => ({
+				file_id: p.file_id,
+				published_at: p.published_at!
+			}));
+	}
+
+	getPublishedPostsByChatId(chatId: string): { file_id: string; published_at: string }[] {
+		return Array.from(this.posts.values())
+			.filter(p => p.status === 'published' && p.published_at && p.chat_id === chatId)
 			.map(p => ({
 				file_id: p.file_id,
 				published_at: p.published_at!

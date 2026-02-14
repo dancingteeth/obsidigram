@@ -13,9 +13,8 @@ export class Scheduler {
 	constructor(bot: Bot, storage: Storage) {
 		this.bot = bot;
 		this.storage = storage;
-		
-		const chatId = process.env.TELEGRAM_CHAT_ID || '';
-		this.publisher = new MultiPlatformPublisher(bot, chatId);
+		// Default chatId only for legacy posts; per-post chat_id is used when publishing
+		this.publisher = new MultiPlatformPublisher(bot, process.env.TELEGRAM_CHAT_ID || '');
 	}
 
 	/**
@@ -109,13 +108,16 @@ export class Scheduler {
 	}
 
 	/**
-	 * Returns scheduled posts for Telegram - each post as a separate message
-	 * Returns an array of messages to send
+	 * Returns scheduled posts for Telegram (optionally scoped by chatId for multi-tenant)
 	 */
-	getScheduleForTelegram(): { header: string; posts: { time: string; content: string }[] } {
+	getScheduleForTelegram(chatId?: string): { header: string; posts: { time: string; content: string }[] } {
 		const now = new Date();
-		const scheduledPosts = this.storage.getScheduledPosts();
-		const publishedPosts = this.storage.getPublishedPosts();
+		const scheduledPosts = chatId
+			? this.storage.getScheduledPostsByChatId(chatId)
+			: this.storage.getScheduledPosts();
+		const publishedPosts = chatId
+			? this.storage.getPublishedPostsByChatId(chatId)
+			: this.storage.getPublishedPosts();
 
 		if (scheduledPosts.length === 0) {
 			return {
@@ -208,8 +210,9 @@ export class Scheduler {
 			console.log(`  🏷️  Category: ${post.category}`);
 			console.log('─'.repeat(50));
 
-			// Publish to all target platforms
-			const result = await this.publisher.publishToMultiple(targetPlatforms, post.content);
+			// Per-channel: use post's chat_id with fallback for legacy posts
+			const telegramChatId = post.chat_id || process.env.TELEGRAM_CHAT_ID || '';
+			const result = await this.publisher.publishToMultiple(targetPlatforms, post.content, telegramChatId);
 
 			// Log results per platform
 			for (const r of result.results) {
@@ -225,10 +228,9 @@ export class Scheduler {
 			const anySuccess = result.results.some(r => r.success);
 			const status = allSuccess ? 'published' : (anySuccess ? 'partial' : 'failed');
 
-			// Get Telegram message ID for backwards compatibility
 			const telegramResult = result.results.find(r => r.platform === 'telegram');
 			const messageId = telegramResult?.messageId;
-			const chatId = process.env.TELEGRAM_CHAT_ID || post.chat_id;
+			const chatId = telegramChatId;
 
 			// Update post status
 			this.storage.updatePost(post.id, {

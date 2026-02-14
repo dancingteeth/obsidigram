@@ -565,7 +565,7 @@ export default class ObsidigramPlugin extends Plugin {
 	async syncPublishedPosts(): Promise<void> {
 		console.log('[Obsidigram] Syncing published posts...');
 		
-		const apiClient = new ApiClient(this.settings.botApiUrl);
+		const apiClient = new ApiClient(this.settings.botApiUrl, this.settings.apiKey || '');
 		const response = await apiClient.getPublishedPosts();
 
 		if (!response) {

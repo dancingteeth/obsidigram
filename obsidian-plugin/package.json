@@ -16,6 +16,12 @@
 	],
 	"author": "dancingteeth",
 	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/dancingteeth/obsidigram.git"
+	},
+	"homepage": "https://github.com/dancingteeth/obsidigram#readme",
+	"bugs": "https://github.com/dancingteeth/obsidigram/issues",
 	"devDependencies": {
 		"@types/node": "^18.0.0",
 		"builtin-modules": "^3.3.0",

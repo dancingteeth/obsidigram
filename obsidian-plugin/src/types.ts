@@ -17,6 +17,8 @@ export interface CategoryConfig {
 
 export interface ObsidigramSettings {
 	botApiUrl: string;
+	/** API key from @obsidigram_cms_bot (links plugin to your channel) */
+	apiKey: string;
 	timeSlots: string[]; // e.g., ["09:00", "12:00", "15:00", "18:00", "21:00", "00:00"]
 	categories: CategoryConfig[]; // Category configurations
 	defaultPlatforms: Platform[]; // Default platforms for new posts
@@ -83,7 +85,8 @@ export const DEFAULT_CATEGORIES: CategoryConfig[] = [
 ];
 
 export const DEFAULT_SETTINGS: ObsidigramSettings = {
-	botApiUrl: "http://localhost:3001",
+	botApiUrl: "http://obsidigram.dancingteeth.net:3001",
+	apiKey: "",
 	timeSlots: ["09:00", "12:00", "15:00", "18:00", "21:00", "00:00"],
 	categories: DEFAULT_CATEGORIES,
 	defaultPlatforms: ['telegram'],

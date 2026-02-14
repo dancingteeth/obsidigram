@@ -1,8 +1,0 @@
-{
-  "projectId": "d026476f-40bc-4f28-a70e-2c1686805e6a",
-  "createdAt": 1765490159771,
-  "startupCommands": [
-    "cd /Users/paulzgordan/Projects/obsidigram/telegram-bot && npm install && npm run dev",
-    "cd /Users/paulzgordan/Projects/obsidigram/obsidian-plugin && npm install && npm run dev"
-  ]
-}

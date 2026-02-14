@@ -54,11 +54,15 @@ export class MultiPlatformPublisher {
 	}
 
 	/**
-	 * Publish to Telegram
+	 * Publish to Telegram (uses chatIdOverride if provided, else constructor chatId)
 	 */
-	private async publishToTelegram(content: string): Promise<PublishResult> {
+	private async publishToTelegram(content: string, chatIdOverride?: string): Promise<PublishResult> {
+		const chatId = chatIdOverride ?? this.telegramChatId;
+		if (!chatId) {
+			return { platform: 'telegram', success: false, error: 'No Telegram chat ID' };
+		}
 		try {
-			const message = await this.telegramBot.api.sendMessage(this.telegramChatId, content, {
+			const message = await this.telegramBot.api.sendMessage(chatId, content, {
 				parse_mode: 'HTML',
 			});
 
@@ -78,12 +82,12 @@ export class MultiPlatformPublisher {
 	}
 
 	/**
-	 * Publish to a single platform
+	 * Publish to a single platform (telegramChatId override for multi-tenant)
 	 */
-	async publishTo(platform: Platform, content: string): Promise<PublishResult> {
+	async publishTo(platform: Platform, content: string, telegramChatIdOverride?: string): Promise<PublishResult> {
 		switch (platform) {
 			case 'telegram':
-				return this.publishToTelegram(content);
+				return this.publishToTelegram(content, telegramChatIdOverride);
 			
 			case 'facebook':
 				if (!this.facebookPublisher) {
@@ -127,11 +131,11 @@ export class MultiPlatformPublisher {
 	}
 
 	/**
-	 * Publish to multiple platforms
+	 * Publish to multiple platforms (telegramChatId override for per-post channel)
 	 */
-	async publishToMultiple(platforms: Platform[], content: string): Promise<MultiPublishResult> {
+	async publishToMultiple(platforms: Platform[], content: string, telegramChatIdOverride?: string): Promise<MultiPublishResult> {
 		const results = await Promise.all(
-			platforms.map(platform => this.publishTo(platform, content))
+			platforms.map(platform => this.publishTo(platform, content, telegramChatIdOverride))
 		);
 
 		return {

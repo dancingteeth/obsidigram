@@ -22,22 +22,31 @@ export class ObsidigramSettingTab extends PluginSettingTab {
 		});
 
 		// ============================================
-		// Bot Configuration Section
+		// API Configuration
 		// ============================================
-		containerEl.createEl('h2', { text: 'Bot Configuration' });
+		containerEl.createEl('h2', { text: 'API Configuration' });
+		const apiKeyDesc = containerEl.createEl('p', { cls: 'setting-item-description' });
+		apiKeyDesc.appendText('Get your API key from ');
+		apiKeyDesc.createEl('a', { text: '@obsidigram_cms_bot', href: 'https://t.me/obsidigram_cms_bot' });
+		apiKeyDesc.appendText(' on Telegram. Forward a message from your channel, add the bot as admin, then /verify.');
 
 		new Setting(containerEl)
-			.setName('Bot API URL')
-			.setDesc('The base URL of your Telegram bot API server (e.g., http://localhost:3001 or http://149.102.148.156:3001)')
+			.setName('API Key')
+			.setDesc('Paste the API key from the bot (obdg_...)')
 			.addText((text: TextComponent) => {
-				text.setPlaceholder('http://localhost:3001');
-				text.setValue(this.plugin.settings.botApiUrl);
+				text.setPlaceholder('obdg_...');
+				text.setValue(this.plugin.settings.apiKey || '');
 				text.inputEl.style.width = '300px';
+				text.inputEl.type = 'password';
 				text.onChange(async (value: string) => {
-					this.plugin.settings.botApiUrl = value.trim();
+					this.plugin.settings.apiKey = value.trim();
 					await this.plugin.saveSettings();
 				});
-			})
+			});
+
+		new Setting(containerEl)
+			.setName('Test Connection')
+			.setDesc('Verify API server and API key')
 			.addButton((button: ButtonComponent) => {
 				button.setButtonText('Test Connection');
 				button.onClick(async () => {
@@ -45,18 +54,19 @@ export class ObsidigramSettingTab extends PluginSettingTab {
 					button.setDisabled(true);
 					try {
 						const { ApiClient } = await import('./ApiClient');
-						const apiClient = new ApiClient(this.plugin.settings.botApiUrl);
-						const response = await apiClient.getBusySlots();
-						if (response) {
-							new Notice('✅ Connection successful!');
-						} else {
-							new Notice('❌ Connection failed. Check your URL and ensure the bot is running.');
+						const apiClient = new ApiClient(this.plugin.settings.botApiUrl, this.plugin.settings.apiKey || '');
+						const scheduleResponse = await apiClient.getBusySlots();
+						if (!scheduleResponse) {
+							new Notice('❌ Connection failed. Check API URL and API key.');
+							return;
 						}
+						new Notice('✅ Connection successful!');
 					} catch (error) {
-						new Notice('❌ Connection failed. Check your URL and ensure the bot is running.');
+						new Notice('❌ Connection failed. Check settings and network.');
+					} finally {
+						button.setButtonText('Test Connection');
+						button.setDisabled(false);
 					}
-					button.setButtonText('Test Connection');
-					button.setDisabled(false);
 				});
 			});
 

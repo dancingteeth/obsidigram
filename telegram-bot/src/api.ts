@@ -1,19 +1,52 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import { Storage } from './storage';
 import type { Scheduler } from './scheduler';
+import type { UserStorage } from './users';
 import type { 
 	ScheduleRequest, 
 	ScheduleResponse, 
 	BusySlot,
-	PublishedPost,
 	Platform 
 } from './types';
 
-export function createApiRouter(storage: Storage, scheduler?: Scheduler) {
+export interface AuthUser {
+	chatId: string;
+	telegramUserId: number;
+	apiKey: string;
+}
+
+export interface AuthRequest extends Request {
+	user?: AuthUser;
+}
+
+function authMiddleware(userStorage: UserStorage) {
+	return (req: AuthRequest, res: Response, next: NextFunction) => {
+		const authHeader = req.headers.authorization;
+		if (!authHeader || !authHeader.startsWith('Bearer ')) {
+			res.status(401).json({ error: 'Missing or invalid Authorization header' });
+			return;
+		}
+		const apiKey = authHeader.slice(7).trim();
+		const user = userStorage.getUserByApiKey(apiKey);
+		if (!user || !user.verified) {
+			res.status(401).json({ error: 'Invalid API key or channel not verified' });
+			return;
+		}
+		req.user = {
+			chatId: user.chatId,
+			telegramUserId: user.telegramUserId,
+			apiKey: user.apiKey,
+		};
+		next();
+	};
+}
+
+export function createApiRouter(storage: Storage, userStorage: UserStorage, scheduler?: Scheduler) {
 	const router = express.Router();
+	router.use(authMiddleware(userStorage));
 
 	// GET /api/platforms - Get configured platforms
-	router.get('/platforms', async (req: Request, res: Response) => {
+	router.get('/platforms', async (req: AuthRequest, res: Response) => {
 		try {
 			if (!scheduler) {
 				res.json({ 
@@ -36,13 +69,11 @@ export function createApiRouter(storage: Storage, scheduler?: Scheduler) {
 		}
 	});
 
-	// GET /api/schedule - Get busy slots
-	// Accepts optional query params:
-	// - timeSlots: comma-separated list of times (e.g., "09:00,12:00,15:00")
-	// - tzOffset: client timezone offset in minutes (e.g., -240 for UTC+4)
-	router.get('/schedule', (req: Request, res: Response) => {
+	// GET /api/schedule - Get busy slots (scoped to authenticated user's channel)
+	router.get('/schedule', (req: AuthRequest, res: Response) => {
 		try {
-			const scheduledPosts = storage.getScheduledPosts();
+			const chatId = req.user!.chatId;
+			const scheduledPosts = storage.getScheduledPostsByChatId(chatId);
 			
 			// Get timezone offset from client (minutes, negative for UTC+)
 			const tzOffsetParam = req.query.tzOffset as string | undefined;
@@ -175,10 +206,11 @@ export function createApiRouter(storage: Storage, scheduler?: Scheduler) {
 		}
 	});
 
-	// POST /api/schedule - Schedule a post
-	router.post('/schedule', async (req: Request, res: Response) => {
+	// POST /api/schedule - Schedule a post (chat_id from authenticated user)
+	router.post('/schedule', async (req: AuthRequest, res: Response) => {
 		try {
 			const request: ScheduleRequest = req.body;
+			const chatId = req.user!.chatId;
 
 			// Validate request
 			if (!request.file_id || !request.content || !request.scheduled_time || !request.category) {
@@ -199,8 +231,8 @@ export function createApiRouter(storage: Storage, scheduler?: Scheduler) {
 				return;
 			}
 
-			// Idempotency check: if this file is already scheduled, update it instead of creating duplicate
-			const existingPosts = storage.getScheduledPosts();
+			// Idempotency: same file_id + same channel
+			const existingPosts = storage.getScheduledPostsByChatId(chatId);
 			const existingPost = existingPosts.find(p => p.file_id === request.file_id);
 			
 			if (existingPost) {
@@ -234,7 +266,7 @@ export function createApiRouter(storage: Storage, scheduler?: Scheduler) {
 			// Generate unique ID for new post
 			const id = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-			// Create scheduled post
+			// Create scheduled post (chat_id from authenticated user)
 			const post = {
 				id,
 				file_id: request.file_id,
@@ -244,6 +276,7 @@ export function createApiRouter(storage: Storage, scheduler?: Scheduler) {
 				tags: request.tags || [],
 				status: 'scheduled' as const,
 				platforms: (request.platforms && request.platforms.length > 0) ? request.platforms : ['telegram'] as Platform[],
+				chat_id: chatId,
 			};
 
 			storage.addPost(post);
@@ -276,10 +309,10 @@ export function createApiRouter(storage: Storage, scheduler?: Scheduler) {
 		}
 	});
 
-	// GET /api/published - Get published posts
-	router.get('/published', (req: Request, res: Response) => {
+	// GET /api/published - Get published posts (scoped to user's channel)
+	router.get('/published', (req: AuthRequest, res: Response) => {
 		try {
-			const publishedPosts = storage.getPublishedPosts();
+			const publishedPosts = storage.getPublishedPostsByChatId(req.user!.chatId);
 			res.json({ posts: publishedPosts });
 		} catch (error) {
 			console.error('[API] Error getting published posts:', error);
@@ -290,8 +323,8 @@ export function createApiRouter(storage: Storage, scheduler?: Scheduler) {
 		}
 	});
 
-	// POST /api/publish - Publish a post immediately (no scheduling)
-	router.post('/publish', async (req: Request, res: Response) => {
+	// POST /api/publish - Publish a post immediately (chat_id from authenticated user)
+	router.post('/publish', async (req: AuthRequest, res: Response) => {
 		try {
 			if (!scheduler) {
 				res.status(500).json({
@@ -302,6 +335,7 @@ export function createApiRouter(storage: Storage, scheduler?: Scheduler) {
 			}
 
 			const request: ScheduleRequest = req.body;
+			const chatId = req.user!.chatId;
 
 			// Validate request
 			if (!request.file_id || !request.content || !request.category) {
@@ -315,7 +349,7 @@ export function createApiRouter(storage: Storage, scheduler?: Scheduler) {
 			// Generate unique ID
 			const id = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-			// Create post object (with current time as scheduled_time for record keeping)
+			// Create post object with user's chat_id
 			const post = {
 				id,
 				file_id: request.file_id,
@@ -325,6 +359,7 @@ export function createApiRouter(storage: Storage, scheduler?: Scheduler) {
 				tags: request.tags || [],
 				status: 'scheduled' as const,
 				platforms: (request.platforms && request.platforms.length > 0) ? request.platforms : ['telegram'] as Platform[],
+				chat_id: chatId,
 			};
 
 			// Add to storage temporarily

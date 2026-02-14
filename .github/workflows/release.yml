@@ -1,0 +1,39 @@
+name: Release Plugin
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install and build
+        run: |
+          cd obsidian-plugin
+          npm ci
+          npm run build
+
+      - name: Create release assets
+        run: |
+          mkdir -p release
+          cp obsidian-plugin/main.js obsidian-plugin/manifest.json release/
+          [ -f obsidian-plugin/styles.css ] && cp obsidian-plugin/styles.css release/
+          cd release && zip -r ../obsidigram-${{ github.ref_name }}.zip . && cd ..
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: obsidigram-${{ github.ref_name }}.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
