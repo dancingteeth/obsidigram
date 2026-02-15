@@ -419,8 +419,9 @@ export class ObsidigramSettingTab extends PluginSettingTab {
 
 		const allPlatforms: { id: Platform; name: string; icon: string }[] = [
 			{ id: 'telegram', name: 'Telegram', icon: '✈️' },
-			{ id: 'facebook', name: 'Facebook', icon: '📘' },
-			{ id: 'threads', name: 'Threads', icon: '🧵' },
+			// TODO: debug and re-enable
+			// { id: 'facebook', name: 'Facebook', icon: '📘' },
+			// { id: 'threads', name: 'Threads', icon: '🧵' },
 		];
 
 		const defaultPlatforms = new Set(this.plugin.settings.defaultPlatforms || ['telegram']);
@@ -470,14 +471,26 @@ export class ObsidigramSettingTab extends PluginSettingTab {
 				'Tag your notes with #tg_ready and #tg_unpublished to schedule them for posting.',
 			cls: 'setting-item-description'
 		});
+		const supportP = containerEl.createEl('p', { cls: 'setting-item-description' });
+		supportP.appendText('Enjoying the plugin? ');
+		supportP.createEl('a', { text: 'Support me!', href: 'https://ko-fi.com/dancingteeth' });
 		
 		containerEl.createEl('h3', { text: 'Usage' });
-		containerEl.createEl('ul', { cls: 'setting-item-description' }).innerHTML = `
-			<li>Add <code>#tg_ready</code> and <code>#tg_unpublished</code> tags to your note</li>
-			<li>Add a category tag: <code>#tg_research</code>, <code>#tg_infrastructure_energy</code>, etc.</li>
-			<li>Save the file - the scheduling modal will open automatically</li>
-			<li>Select a time slot and schedule your post</li>
-		`;
+		const usageList = containerEl.createEl('ul', { cls: 'setting-item-description' });
+		const li1 = usageList.createEl('li');
+		li1.appendText('Add ');
+		li1.createEl('code', { text: '#tg_ready' });
+		li1.appendText(' and ');
+		li1.createEl('code', { text: '#tg_unpublished' });
+		li1.appendText(' tags to your note');
+		const li2 = usageList.createEl('li');
+		li2.appendText('Add a category tag: ');
+		li2.createEl('code', { text: '#tg_research' });
+		li2.appendText(', ');
+		li2.createEl('code', { text: '#tg_infrastructure_energy' });
+		li2.appendText(', etc.');
+		usageList.createEl('li', { text: 'Save the file - the scheduling modal will open automatically' });
+		usageList.createEl('li', { text: 'Select a time slot and schedule your post' });
 	}
 }
 

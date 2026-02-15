@@ -10,10 +10,9 @@ Use this checklist before releasing or after major changes.
 ## Installation & Configuration
 
 - [ ] Fresh install (download/copy plugin, enable in Obsidian)
-- [ ] Bot token configuration (paste token, save)
-- [ ] Channel ID configuration (paste channel ID, save)
+- [ ] API key configuration (paste API key from @obsidigram_cms_bot, save)
 - [ ] Test Connection button shows success when configured correctly
-- [ ] Test Connection shows appropriate error for wrong token
+- [ ] Test Connection shows appropriate error for wrong API key
 - [ ] Test Connection shows appropriate error for wrong/inaccessible channel
 
 ## Scheduling
@@ -48,7 +47,7 @@ Use this checklist before releasing or after major changes.
 
 ## Error Handling
 
-- [ ] Wrong bot token — clear error message
+- [ ] Wrong API key — clear error message
 - [ ] Wrong channel ID or bot not admin — clear error message
 - [ ] API server unreachable — clear error message
 - [ ] Network offline — graceful failure

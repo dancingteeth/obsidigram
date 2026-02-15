@@ -1,12 +1,13 @@
 {
 	"name": "obsidigram",
 	"version": "0.1.0",
+	"packageManager": "pnpm@9.15.0",
 	"description": "Turn Obsidian into a headless CMS for Telegram",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
-		"version": "node version-bump.mjs && git add manifest.json versions.json"
+		"version": "node version-bump.mjs && git add manifest.json versions.json ../manifest.json"
 	},
 	"keywords": [
 		"obsidian",

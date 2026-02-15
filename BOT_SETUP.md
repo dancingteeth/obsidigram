@@ -76,4 +76,4 @@ To find your channel ID: forward a message from your channel to [@userinfobot](h
 
 **"API server unreachable"**
 - Check your internet connection
-- Default API URL is `http://obsidigram.dancingteeth.net:3001`; if you use a different server, set it in Obsidian settings
+- Default API URL is `https://obsidigram.dancingteeth.net`; if you use a different server, set it in Obsidian settings

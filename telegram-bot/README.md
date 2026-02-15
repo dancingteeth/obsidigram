@@ -13,31 +13,28 @@ Telegram bot API server for the Obsidigram Obsidian plugin. Receives scheduled p
 
 1. Install dependencies:
 ```bash
-npm install
+pnpm install
 ```
 
-2. Configure environment variables:
+2. Configure environment variables (development only):
 ```bash
-# Copy the template (if env.example doesn't exist, create .env manually)
-cp .env.example.template .env
-# Or if you have env.example locally (not in git):
-# cp env.example .env
-# Edit .env with your bot token and chat ID
+cp .env.example .env
+# Edit .env: add BOT_TOKEN for local development (see DEPLOYMENT.md for server setup)
 ```
 
 3. Build:
 ```bash
-npm run build
+pnpm run build
 ```
 
 4. Run:
 ```bash
-npm start
+pnpm start
 ```
 
 Or for development (auto-reload):
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 ## Deployment
@@ -45,7 +42,7 @@ npm run dev
 ### Quick Deploy to Server
 
 ```bash
-npm run deploy
+pnpm run deploy
 ```
 
 Or:
@@ -57,29 +54,15 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions.
 
 ## Environment Variables
 
-Create a `.env` file in the `telegram-bot` directory with the following:
+For **development** and **server deployment** only. Plugin users get an API key from @obsidigram_cms_bot — they never configure BOT_TOKEN.
 
 ```env
-# Telegram Bot Configuration
-BOT_TOKEN=your_bot_token_here
-TELEGRAM_CHAT_ID=your_chat_id_here
-
-# Channel IDs (Examples):
-# Testing channel: your_testing_channel_id
-# Production channel: your_production_channel_id
-
-# Server Configuration
 PORT=3001
-
-# Data Storage
 DATA_DIR=./data
 ```
 
-**Required:**
-- `BOT_TOKEN` - Your Telegram bot token
-- `TELEGRAM_CHAT_ID` - The chat ID where posts should be sent
-  - Testing: `your_testing_channel_id`
-  - Production: `your_production_channel_id`
+**Server/development only** (see [DEPLOYMENT.md](./DEPLOYMENT.md)):
+- `BOT_TOKEN` — Required to run the bot server (development or production)
 
 **Optional:**
 - `PORT` - HTTP server port (default: 3001)

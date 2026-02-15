@@ -1,25 +1,32 @@
 FROM node:20-alpine
 
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
-COPY tsconfig.json ./
+# Copy workspace files
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY telegram-bot/package.json ./telegram-bot/
+COPY telegram-bot/tsconfig.json ./telegram-bot/
 
 # Install all dependencies (including devDependencies for building)
-RUN npm ci
+RUN pnpm install --frozen-lockfile
 
-# Copy source files
-COPY src/ ./src/
+# Copy source and static files
+COPY telegram-bot/src/ ./telegram-bot/src/
+COPY telegram-bot/public/ ./telegram-bot/public/
 
 # Build TypeScript
-RUN npm run build
+WORKDIR /app/telegram-bot
+RUN pnpm run build
 
-# Remove dev dependencies and reinstall only production
-RUN npm prune --production
+# Remove dev dependencies
+RUN pnpm prune --prod
 
 # Create data and logs directories
-RUN mkdir -p /app/data /app/logs
+RUN mkdir -p /app/telegram-bot/data /app/telegram-bot/logs
+
+WORKDIR /app/telegram-bot
 
 # Expose port
 EXPOSE 3001
@@ -30,4 +37,3 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
 
 # Start the bot
 CMD ["node", "dist/index.js"]
-

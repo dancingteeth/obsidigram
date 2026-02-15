@@ -11,12 +11,12 @@ When you use Obsidigram:
 
 - **Post content** — The markdown/HTML content you schedule
 - **Scheduling metadata** — File path, scheduled time, category, tags
-- **Bot token & channel ID** — Stored locally in Obsidian settings (never sent to our server in current implementation)
+- **API key** — Stored locally in Obsidian settings (links your channel to the plugin)
 
 ## Where Data Is Stored
 
 - **Managed server** (149.102.148.156:3001): Scheduled and published posts are stored on our server
-- **Your device**: Plugin settings (including bot token, channel ID, AI keys) are stored in your Obsidian vault
+- **Your device**: Plugin settings (including API key, AI keys) are stored in your Obsidian vault
 
 ## How Data Is Used
 

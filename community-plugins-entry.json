@@ -1,0 +1,7 @@
+{
+  "id": "obsidigram",
+  "name": "Obsidigram",
+  "author": "dancingteeth",
+  "description": "Turn Obsidian into a headless CMS for Telegram. Schedule posts, sync status, and publish to multiple platforms.",
+  "repo": "dancingteeth/obsidigram"
+}

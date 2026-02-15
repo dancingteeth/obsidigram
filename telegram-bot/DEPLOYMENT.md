@@ -18,7 +18,7 @@ This guide explains how to deploy the Obsidigram bot to the holy-grind server.
 
 ```bash
 cd telegram-bot
-npm run deploy
+pnpm run deploy
 ```
 
 Or manually:
@@ -33,7 +33,7 @@ Or manually:
 2. **Creates remote directories** - Sets up `/root/obsidigram` structure
 3. **Transfers files** - Uses rsync to copy files to server (excludes node_modules, dist, etc.)
 4. **Transfers .env** - Copies your `.env` file to the server
-5. **Installs dependencies** - Runs `npm ci` on the server
+5. **Installs dependencies** - Runs `pnpm install --frozen-lockfile` on the server
 6. **Builds on server** - Compiles TypeScript on the server
 7. **Builds Docker image** - Creates the Docker image
 8. **Starts container** - Launches the bot in Docker
@@ -89,8 +89,8 @@ scp telegram-bot/.env holy-grind:/root/obsidigram/.env
 ```bash
 ssh holy-grind
 cd /root/obsidigram
-npm ci --only=production
-npm run build
+pnpm install --prod --frozen-lockfile
+pnpm run build
 docker compose build
 docker compose up -d
 ```
@@ -137,11 +137,11 @@ npm run deploy
 
 ## Environment Variables
 
-The `.env` file on the server should contain:
+The `.env` file on the server (development and production) should contain:
 
 ```env
-BOT_TOKEN=your_bot_token_here
-TELEGRAM_CHAT_ID=your_chat_id_here
+# Required for the bot server — not used by plugin users (they use API keys from the bot)
+BOT_TOKEN=<token from @BotFather for @obsidigram_cms_bot>
 PORT=3001
 DATA_DIR=./data
 ```
@@ -149,7 +149,42 @@ DATA_DIR=./data
 ## Port Configuration
 
 - **Port 3001** is exposed and accessible at `http://149.102.148.156:3001`
-- The bot can also be proxied through Nginx Proxy Manager if needed
+- Proxied via Nginx Proxy Manager at `https://obsidigram.dancingteeth.net` (recommended)
+
+## Nginx Proxy Manager Setup
+
+To serve the bot at `https://obsidigram.dancingteeth.net`:
+
+### 1. DNS
+
+Point `obsidigram.dancingteeth.net` to your server IP (e.g. `149.102.148.156`). Add an A record:
+
+| Type | Name | Value | TTL |
+|------|------|-------|-----|
+| A | obsidigram | 149.102.148.156 | 300 |
+
+### 2. Proxy Host in NPM
+
+Both the bot and NPM run in Docker. The bot exposes port 3001 on the host. NPM must forward to the host (not `127.0.0.1`, which would point to NPM's own container).
+
+1. Open Nginx Proxy Manager (e.g. `http://your-server:81`)
+2. **Hosts** → **Proxy Hosts** → **Add Proxy Host**
+3. **Details** tab:
+   - **Domain Names:** `obsidigram.dancingteeth.net`
+   - **Scheme:** `http`
+   - **Forward Hostname / IP:** `172.17.0.1` (Docker bridge gateway; use this on Linux — `host.docker.internal` does not resolve by default)
+   - **Forward Port:** `3001`
+   - Enable **Block Common Exploits**, **Websockets Support**
+4. **SSL** tab:
+   - **SSL Certificate:** Request a new Let's Encrypt certificate
+   - Enable **Force SSL**
+5. Save
+
+**502 Bad Gateway?** If you used `host.docker.internal`, change it to `172.17.0.1`. On Linux, `host.docker.internal` does not resolve unless NPM was started with `--add-host=host.docker.internal:host-gateway`.
+
+### 3. Plugin default URL
+
+The Obsidian plugin defaults to `https://obsidigram.dancingteeth.net`.
 
 ## Troubleshooting
 

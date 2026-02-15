@@ -1,0 +1,4 @@
+packages:
+  - 'obsidian-plugin'
+  - 'telegram-bot'
+  - 'telegram-bot/landing'

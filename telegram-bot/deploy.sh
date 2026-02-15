@@ -28,10 +28,12 @@ if [ ! -f "$LOCAL_DIR/.env" ] && [ ! -f "$LOCAL_DIR/env.example" ]; then
     exit 1
 fi
 
-# Step 1: Build locally (optional, but good for testing)
+# Step 1: Build landing page and bot
+echo -e "${YELLOW}📦 Building landing page...${NC}"
+cd "$PROJECT_ROOT"
+pnpm --filter obsidigram-landing run build
 echo -e "${YELLOW}📦 Building TypeScript...${NC}"
-cd "$LOCAL_DIR"
-npm run build
+pnpm --filter obsidigram-bot run build
 echo -e "${GREEN}✅ Build complete${NC}"
 echo ""
 
@@ -41,7 +43,7 @@ ssh "$SERVER" "mkdir -p $REMOTE_DIR/data $REMOTE_DIR/logs"
 echo -e "${GREEN}✅ Directory structure created${NC}"
 echo ""
 
-# Step 3: Transfer files
+# Step 3: Transfer files (from project root so pnpm workspace + lockfile are included)
 echo -e "${YELLOW}📤 Transferring files to server...${NC}"
 rsync -avz --delete \
     --exclude 'node_modules' \
@@ -51,7 +53,7 @@ rsync -avz --delete \
     --exclude '.env' \
     --exclude '.git' \
     --exclude '*.log' \
-    "$LOCAL_DIR/" "$SERVER:$REMOTE_DIR/"
+    "$PROJECT_ROOT/" "$SERVER:$REMOTE_DIR/"
 echo -e "${GREEN}✅ Files transferred${NC}"
 echo ""
 
@@ -62,40 +64,40 @@ echo ""
 
 # Step 5: Install dependencies and build on server
 echo -e "${YELLOW}📥 Installing dependencies on server (including dev for build)...${NC}"
-ssh "$SERVER" "cd $REMOTE_DIR && npm ci"
+ssh "$SERVER" "cd $REMOTE_DIR && corepack enable && CI=true pnpm install --frozen-lockfile"
 echo -e "${GREEN}✅ Dependencies installed${NC}"
 echo ""
 
 echo -e "${YELLOW}🔨 Building on server...${NC}"
-ssh "$SERVER" "cd $REMOTE_DIR && npm run build"
+ssh "$SERVER" "cd $REMOTE_DIR && pnpm --filter obsidigram-landing run build && pnpm --filter obsidigram-bot run build"
 echo -e "${GREEN}✅ Build complete on server${NC}"
 echo ""
 
 # Step 5b: Reinstall with production only after build
 echo -e "${YELLOW}📦 Installing production dependencies only...${NC}"
-ssh "$SERVER" "cd $REMOTE_DIR && npm ci --omit=dev"
+ssh "$SERVER" "cd $REMOTE_DIR && CI=true pnpm install --prod --frozen-lockfile"
 echo -e "${GREEN}✅ Production dependencies installed${NC}"
 echo ""
 
 # Step 6: Build and start Docker container
 echo -e "${YELLOW}🐳 Building Docker image...${NC}"
-ssh "$SERVER" "cd $REMOTE_DIR && docker compose build"
+ssh "$SERVER" "cd $REMOTE_DIR && docker compose -f telegram-bot/docker-compose.yml build"
 echo -e "${GREEN}✅ Docker image built${NC}"
 echo ""
 
 echo -e "${YELLOW}🚀 Starting container...${NC}"
-ssh "$SERVER" "cd $REMOTE_DIR && docker compose up -d"
+ssh "$SERVER" "cd $REMOTE_DIR && docker compose -f telegram-bot/docker-compose.yml down; docker rm -f obsidigram-bot 2>/dev/null; docker compose -f telegram-bot/docker-compose.yml up -d"
 echo -e "${GREEN}✅ Container started${NC}"
 echo ""
 
 # Step 7: Check status
 echo -e "${YELLOW}📊 Checking service status...${NC}"
-ssh "$SERVER" "cd $REMOTE_DIR && docker compose ps"
+ssh "$SERVER" "cd $REMOTE_DIR && docker compose -f telegram-bot/docker-compose.yml ps"
 echo ""
 
 # Step 8: Show logs (last 20 lines)
 echo -e "${YELLOW}📋 Recent logs:${NC}"
-ssh "$SERVER" "cd $REMOTE_DIR && docker compose logs --tail=20"
+ssh "$SERVER" "cd $REMOTE_DIR && docker compose -f telegram-bot/docker-compose.yml logs --tail=20"
 echo ""
 
 # Step 9: Health check
@@ -113,8 +115,7 @@ echo ""
 echo "Service is running at: http://149.102.148.156:3001"
 echo ""
 echo "Useful commands:"
-echo "  View logs:    ssh $SERVER 'cd $REMOTE_DIR && docker compose logs -f'"
-echo "  Restart:       ssh $SERVER 'cd $REMOTE_DIR && docker compose restart'"
-echo "  Stop:          ssh $SERVER 'cd $REMOTE_DIR && docker compose down'"
-echo "  Status:        ssh $SERVER 'cd $REMOTE_DIR && docker compose ps'"
-
+echo "  View logs:    ssh $SERVER 'cd $REMOTE_DIR && docker compose -f telegram-bot/docker-compose.yml logs -f'"
+echo "  Restart:       ssh $SERVER 'cd $REMOTE_DIR && docker compose -f telegram-bot/docker-compose.yml restart'"
+echo "  Stop:          ssh $SERVER 'cd $REMOTE_DIR && docker compose -f telegram-bot/docker-compose.yml down'"
+echo "  Status:        ssh $SERVER 'cd $REMOTE_DIR && docker compose -f telegram-bot/docker-compose.yml ps'"

@@ -1,8 +1,8 @@
 import cron from 'node-cron';
 import { Bot } from 'grammy';
-import { Storage } from './storage';
-import { MultiPlatformPublisher, Platform } from './publishers/index';
-import type { ScheduledPost, PlatformPublishResult } from './types';
+import { Storage } from './storage.js';
+import { MultiPlatformPublisher, Platform } from './publishers/index.js';
+import type { ScheduledPost, PlatformPublishResult } from './types.js';
 
 export class Scheduler {
 	private bot: Bot;
@@ -13,8 +13,7 @@ export class Scheduler {
 	constructor(bot: Bot, storage: Storage) {
 		this.bot = bot;
 		this.storage = storage;
-		// Default chatId only for legacy posts; per-post chat_id is used when publishing
-		this.publisher = new MultiPlatformPublisher(bot, process.env.TELEGRAM_CHAT_ID || '');
+		this.publisher = new MultiPlatformPublisher(bot, '');
 	}
 
 	/**
@@ -210,8 +209,7 @@ export class Scheduler {
 			console.log(`  🏷️  Category: ${post.category}`);
 			console.log('─'.repeat(50));
 
-			// Per-channel: use post's chat_id with fallback for legacy posts
-			const telegramChatId = post.chat_id || process.env.TELEGRAM_CHAT_ID || '';
+			const telegramChatId = post.chat_id || '';
 			const result = await this.publisher.publishToMultiple(targetPlatforms, post.content, telegramChatId);
 
 			// Log results per platform

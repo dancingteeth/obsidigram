@@ -4,9 +4,9 @@
  */
 
 import { Bot } from 'grammy';
-import { FacebookPublisher } from './facebook';
+import { FacebookPublisher } from './facebook.js';
 import type { FacebookPostResult } from './facebook';
-import { ThreadsPublisher } from './threads';
+import { ThreadsPublisher } from './threads.js';
 import type { ThreadsPostResult } from './threads';
 
 export type Platform = 'telegram' | 'facebook' | 'threads';

@@ -106,7 +106,7 @@ export default class ObsidigramPlugin extends Plugin {
 
 		// Open settings command
 		this.addCommand({
-			id: 'open-obsidigram-settings',
+			id: 'open-settings',
 			name: 'Open Obsidigram Settings',
 			callback: () => {
 				// @ts-ignore - accessing private API

@@ -1,11 +1,16 @@
 import 'dotenv/config';
+import { join } from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 import { Bot } from 'grammy';
 import express from 'express';
 import cors from 'cors';
-import { Storage } from './storage';
-import { Scheduler } from './scheduler';
-import { UserStorage } from './users';
-import { createApiRouter } from './api';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+import { Storage } from './storage.js';
+import { Scheduler } from './scheduler.js';
+import { UserStorage } from './users.js';
+import { createApiRouter } from './api.js';
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 if (!BOT_TOKEN) {
@@ -22,14 +27,6 @@ async function main() {
 
 	const userStorage = new UserStorage();
 	await userStorage.initialize();
-
-	// Seed migration: if TELEGRAM_CHAT_ID is set, ensure a system user exists for it (legacy single-tenant)
-	const legacyChatId = process.env.TELEGRAM_CHAT_ID;
-	if (legacyChatId && userStorage.getAllUsers().length === 0) {
-		const legacyUser = userStorage.registerUser(0, 'legacy', legacyChatId, 'Legacy channel');
-		userStorage.verifyChannel(0, 'Legacy channel');
-		console.log('[Obsidigram Bot] Seeded legacy user for TELEGRAM_CHAT_ID. API key:', legacyUser.apiKey);
-	}
 
 	const bot = new Bot(BOT_TOKEN as string);
 	const scheduler = new Scheduler(bot, storage);
@@ -59,7 +56,8 @@ async function main() {
 				'/post – Publish a post now\n' +
 				'/cancel – Cancel a post\n' +
 				'/clear – Clear all scheduled\n' +
-				'/apikey – Show or reset API key',
+				'/apikey – Show API key, /apikey reset – Reset it\n\n' +
+				'☕ <a href="https://ko-fi.com/dancingteeth">Enjoying the plugin? Support me!</a>',
 				{ parse_mode: 'HTML' }
 			);
 			return;
@@ -68,11 +66,12 @@ async function main() {
 		await ctx.reply(
 			'👋 <b>Welcome to Obsidigram</b>\n\n' +
 			'To link your channel:\n\n' +
-			'1️⃣ <b>Forward a message</b> from your Telegram channel to this chat\n' +
+			'1️⃣ <b>Forward a message</b> from your channel to this chat\n' +
 			'   — or send your channel ID (e.g. <code>-1001234567890</code>)\n\n' +
 			'2️⃣ Add me as an <b>admin</b> to your channel (with permission to post)\n\n' +
-			'3️⃣ Send /verify here\n\n' +
-			'4️⃣ Copy your API key into Obsidian plugin settings',
+			'3️⃣ Send /verify <b>in this chat</b> (not in the channel)\n\n' +
+			'4️⃣ Copy your API key into Obsidian plugin settings\n\n' +
+			'☕ <a href="https://ko-fi.com/dancingteeth">Enjoying the plugin? Support me!</a>',
 			{ parse_mode: 'HTML' }
 		);
 	});
@@ -82,6 +81,7 @@ async function main() {
 		if (!isPrivateChat(ctx)) return;
 		const from = ctx.from;
 		if (!from) return;
+		console.log(`[Bot] Forward from user ${from.id}, origin:`, JSON.stringify(ctx.message.forward_origin));
 		const origin = ctx.message.forward_origin;
 		// forward_origin can be channel, chat, or hidden - we need channel
 		const chat = (origin as { type?: string; chat?: { id: number; title?: string } }).chat;
@@ -94,25 +94,29 @@ async function main() {
 		userStorage.setPendingChatId(from.id, chatId, chatTitle);
 		await ctx.reply(
 			`✅ Channel detected: <b>${chatTitle || chatId}</b>\n\n` +
-			'Next: add me as an <b>admin</b> to this channel (with permission to post messages), then send /verify here.',
+			'Next: add me as an <b>admin</b> to your channel (with permission to post), then send /verify <b>in this chat</b>.',
 			{ parse_mode: 'HTML' }
 		);
 	});
 
 	// ----- Plain text that looks like channel ID -----
-	bot.on('message:text', async (ctx) => {
+	bot.on('message:text', async (ctx, next) => {
 		if (!isPrivateChat(ctx)) return;
 		const from = ctx.from;
 		if (!from) return;
 		const text = ctx.message.text?.trim() ?? '';
-		// Skip commands
-		if (text.startsWith('/')) return;
+		// Let command handlers process slash-commands
+		if (text.startsWith('/')) {
+			await next();
+			return;
+		}
 		// Channel IDs are typically -100xxxxxxxxxx
 		if (/^-100\d{10,}$/.test(text)) {
+			console.log(`[Bot] Channel ID from user ${from.id}: ${text}`);
 			userStorage.setPendingChatId(from.id, text);
 			await ctx.reply(
 				'✅ Channel ID saved.\n\n' +
-				'Next: add me as an <b>admin</b> to your channel (with permission to post), then send /verify here.',
+				'Next: add me as an <b>admin</b> to your channel (with permission to post), then send /verify <b>in this chat</b>.',
 				{ parse_mode: 'HTML' }
 			);
 		}
@@ -120,39 +124,70 @@ async function main() {
 
 	// ----- /verify: check admin and issue API key -----
 	bot.command('verify', async (ctx) => {
-		if (!isPrivateChat(ctx)) return;
-		const from = ctx.from;
-		if (!from) return;
-		const user = userStorage.getUserByTelegramId(from.id);
-		if (!user) {
-			await ctx.reply('First forward a message from your channel or send your channel ID, then try /verify.');
-			return;
-		}
-		await ctx.reply('🔍 Checking channel access...');
+		const safeReply = async (text: string, opts?: { parse_mode?: 'HTML' }) => {
+			try {
+				await ctx.reply(text, opts);
+			} catch (e) {
+				console.error('[Bot] Failed to reply:', e);
+			}
+		};
 		try {
-			const chat = await bot.api.getChat(user.chatId);
-			const chatTitle = chat.title ?? user.chatId;
-			const me = await bot.api.getMe();
-			const member = await bot.api.getChatMember(user.chatId, me.id);
-			const canPost = member.status === 'administrator' || member.status === 'creator';
-			if (!canPost) {
-				await ctx.reply(
-					`❌ I'm not an admin in "${chatTitle}".\n\n` +
-					'Add me as an administrator with permission to post messages, then send /verify again.'
-				);
+			if (!isPrivateChat(ctx)) {
+				await safeReply('Send /verify in our private chat (open @obsidigram_cms_bot and type /verify there).');
 				return;
 			}
-			userStorage.verifyChannel(from.id, chatTitle);
-			const u = userStorage.getUserByTelegramId(from.id)!;
-			await ctx.reply(
-				'✅ <b>Channel verified!</b>\n\n' +
-				`Your API key:\n<code>${u.apiKey}</code>\n\n` +
-				'Paste it in Obsidian → Settings → Obsidigram → API Key, then click Test Connection.',
-				{ parse_mode: 'HTML' }
-			);
+			const from = ctx.from;
+			if (!from) return;
+			console.log(`[Bot] /verify from user ${from.id} (@${from.username})`);
+			const user = userStorage.getUserByTelegramId(from.id);
+			if (!user) {
+				console.log(`[Bot] /verify: no user found for ${from.id}`);
+				await safeReply('First forward a message from your channel or send your channel ID, then try /verify.');
+				return;
+			}
+			console.log(`[Bot] /verify: checking channel ${user.chatId}`);
+			await safeReply('🔍 Checking channel access...');
+			try {
+				const chat = await bot.api.getChat(user.chatId);
+				const chatTitle = chat.title ?? user.chatId;
+				const me = await bot.api.getMe();
+				const member = await bot.api.getChatMember(user.chatId, me.id);
+				const canPost = member.status === 'administrator' || member.status === 'creator';
+				if (!canPost) {
+					console.log(`[Bot] /verify: not admin in ${user.chatId}, status=${member.status}`);
+					await safeReply(
+						`❌ I'm not an admin in "${chatTitle}".\n\n` +
+						'Add me as an administrator with permission to post messages, then send /verify again.'
+					);
+					return;
+				}
+				userStorage.verifyChannel(from.id, chatTitle);
+				const u = userStorage.getUserByTelegramId(from.id)!;
+				console.log(`[Bot] /verify: success for ${from.id}, channel ${chatTitle}`);
+				await safeReply(
+					'✅ <b>Channel verified!</b>\n\n' +
+					`Your API key:\n<code>${u.apiKey}</code>\n\n` +
+					'Paste it in Obsidian → Settings → Obsidigram → API Key, then click Test Connection.',
+					{ parse_mode: 'HTML' }
+				);
+			} catch (err: unknown) {
+				const msg = (err instanceof Error ? err.message : String(err)).slice(0, 200);
+				console.error(`[Bot] /verify error for ${from.id}:`, err);
+				// Fallback: send API key anyway so user can proceed; they can retry /verify after adding bot as admin
+				await safeReply(
+					`❌ Could not verify channel access: ${msg}\n\n` +
+					`<b>Your API key (use it in Obsidian):</b>\n<code>${user.apiKey}</code>\n\n` +
+					'Add me as admin to your channel, then send /verify again to confirm.',
+					{ parse_mode: 'HTML' }
+				);
+			}
 		} catch (err: unknown) {
-			const msg = err instanceof Error ? err.message : String(err);
-			await ctx.reply(`❌ Could not access channel: ${msg}\n\nMake sure I'm added as admin and try /verify again.`);
+			console.error('[Bot] /verify handler error:', err);
+			try {
+				await ctx.reply('Something went wrong. Try /start and /verify again.');
+			} catch {
+				// ignore
+			}
 		}
 	});
 
@@ -327,8 +362,15 @@ async function main() {
 		await ctx.reply(msg, { parse_mode: 'HTML' });
 	});
 
-	bot.catch((err) => {
+	bot.catch(async (err) => {
 		console.error('[Bot] Error:', err);
+		try {
+			if (err.ctx?.chat?.id) {
+				await err.ctx.reply('Something went wrong. Please try again or use /start.');
+			}
+		} catch {
+			// ignore reply failures
+		}
 	});
 
 	bot.start({
@@ -350,6 +392,9 @@ async function main() {
 	}));
 	app.use(express.json());
 	app.use('/api', createApiRouter(storage, userStorage, scheduler));
+
+	// Landing page at /
+	app.use(express.static(join(__dirname, '../public')));
 
 	app.get('/health', (req, res) => {
 		res.json({ status: 'ok', timestamp: new Date().toISOString() });

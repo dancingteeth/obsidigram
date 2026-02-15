@@ -2,8 +2,8 @@ import { promises as fs } from 'fs';
 import { join } from 'path';
 import { randomBytes } from 'crypto';
 
-const DATA_DIR = process.env.DATA_DIR || './data';
-const USERS_FILE = join(DATA_DIR, 'users.json');
+function getDataDir() { return process.env.DATA_DIR || './data'; }
+function getUsersFile() { return join(getDataDir(), 'users.json'); }
 
 const API_KEY_PREFIX = 'obdg_';
 const API_KEY_RANDOM_BYTES = 24; // 32 chars base64url
@@ -25,9 +25,9 @@ export class UserStorage {
 	private pendingSave = false;
 
 	async initialize(): Promise<void> {
-		await fs.mkdir(DATA_DIR, { recursive: true });
+		await fs.mkdir(getDataDir(), { recursive: true });
 		try {
-			const data = await fs.readFile(USERS_FILE, 'utf-8');
+			const data = await fs.readFile(getUsersFile(), 'utf-8');
 			const usersArray: RegisteredUser[] = JSON.parse(data);
 			usersArray.forEach(u => {
 				this.users.set(u.telegramUserId, u);
@@ -60,11 +60,13 @@ export class UserStorage {
 
 	private async doSave(): Promise<void> {
 		try {
+			await fs.mkdir(getDataDir(), { recursive: true });
 			const usersArray = Array.from(this.users.values());
 			const json = JSON.stringify(usersArray, null, 2);
-			const tempFile = USERS_FILE + '.tmp';
+			const usersFile = getUsersFile();
+			const tempFile = usersFile + '.tmp';
 			await fs.writeFile(tempFile, json, 'utf-8');
-			await fs.rename(tempFile, USERS_FILE);
+			await fs.rename(tempFile, usersFile);
 		} catch (error) {
 			console.error('[UserStorage] Error saving users:', error instanceof Error ? error.message : String(error));
 		}
@@ -130,8 +132,10 @@ export class UserStorage {
 			user.chatId = chatId;
 			user.chatTitle = chatTitle;
 			user.verified = false;
+			console.log(`[UserStorage] Updated pending chat for ${telegramUserId}: ${chatId}`);
 		} else {
-			this.registerUser(telegramUserId, undefined, chatId, chatTitle);
+			const u = this.registerUser(telegramUserId, undefined, chatId, chatTitle);
+			console.log(`[UserStorage] Registered user ${telegramUserId}, chatId=${chatId}, apiKey=${u.apiKey}`);
 		}
 		this.save().catch(console.error);
 	}

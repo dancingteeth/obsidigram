@@ -1,13 +1,13 @@
 import express, { Request, Response, NextFunction } from 'express';
-import { Storage } from './storage';
-import type { Scheduler } from './scheduler';
-import type { UserStorage } from './users';
+import { Storage } from './storage.js';
+import type { Scheduler } from './scheduler.js';
+import type { UserStorage } from './users.js';
 import type { 
 	ScheduleRequest, 
 	ScheduleResponse, 
 	BusySlot,
 	Platform 
-} from './types';
+} from './types.js';
 
 export interface AuthUser {
 	chatId: string;
@@ -41,7 +41,7 @@ function authMiddleware(userStorage: UserStorage) {
 	};
 }
 
-export function createApiRouter(storage: Storage, userStorage: UserStorage, scheduler?: Scheduler) {
+export function createApiRouter(storage: Storage, userStorage: UserStorage, scheduler?: Scheduler): express.Router {
 	const router = express.Router();
 	router.use(authMiddleware(userStorage));
 

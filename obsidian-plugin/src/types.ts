@@ -85,7 +85,7 @@ export const DEFAULT_CATEGORIES: CategoryConfig[] = [
 ];
 
 export const DEFAULT_SETTINGS: ObsidigramSettings = {
-	botApiUrl: "http://obsidigram.dancingteeth.net:3001",
+	botApiUrl: "https://obsidigram.dancingteeth.net",
 	apiKey: "",
 	timeSlots: ["09:00", "12:00", "15:00", "18:00", "21:00", "00:00"],
 	categories: DEFAULT_CATEGORIES,

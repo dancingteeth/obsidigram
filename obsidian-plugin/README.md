@@ -73,13 +73,13 @@ Turn your Obsidian vault into a headless CMS for Telegram. Monitor markdown file
 
 ```bash
 # Install dependencies
-npm install
+pnpm install
 
 # Development mode (watches for changes)
-npm run dev
+pnpm run dev
 
 # Build for production
-npm run build
+pnpm run build
 ```
 
 ## Example File

@@ -1,6 +1,6 @@
 import { promises as fs } from 'fs';
 import { join } from 'path';
-import type { ScheduledPost } from './types';
+import type { ScheduledPost } from './types.js';
 
 const DATA_DIR = process.env.DATA_DIR || './data';
 const POSTS_FILE = join(DATA_DIR, 'posts.json');

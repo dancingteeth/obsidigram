@@ -1,6 +1,7 @@
 {
 	"name": "obsidigram-bot",
 	"version": "0.1.0",
+	"packageManager": "pnpm@9.15.0",
 	"description": "Telegram bot API server for Obsidigram plugin",
 	"main": "dist/index.js",
 	"type": "module",
@@ -9,7 +10,9 @@
 		"build": "tsc",
 		"start": "node dist/index.js",
 		"deploy": "./deploy.sh",
-		"deploy:remote": "./deploy.sh"
+		"deploy:remote": "./deploy.sh",
+		"test": "vitest run",
+		"test:watch": "vitest"
 	},
 	"keywords": [
 		"telegram",
@@ -38,7 +41,8 @@
 		"@types/node": "^20.10.0",
 		"@types/node-cron": "^3.0.11",
 		"tsx": "^4.7.0",
-		"typescript": "^5.3.3"
+		"typescript": "^5.3.3",
+		"vitest": "^2.1.0"
 	},
 	"engines": {
 		"node": ">=18.0.0"
