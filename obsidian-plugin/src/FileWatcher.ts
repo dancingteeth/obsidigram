@@ -110,8 +110,9 @@ export class FileWatcher {
 		const hasTgUnpublished = normalizedTags.includes('tg_unpublished');
 		const hasFbUnpublished = normalizedTags.includes('fb_unpublished');
 		const hasThrUnpublished = normalizedTags.includes('thr_unpublished');
+		const hasTwUnpublished = normalizedTags.includes('tw_unpublished');
 		
-		const hasUnpublished = hasCmsUnpublished || hasTgUnpublished || hasFbUnpublished || hasThrUnpublished;
+		const hasUnpublished = hasCmsUnpublished || hasTgUnpublished || hasFbUnpublished || hasThrUnpublished || hasTwUnpublished;
 		const hasReady = normalizedTags.some(t => t === 'cms_ready' || t === 'tg_ready');
 		
 		// Detect intended platforms from platform-specific unpublished tags
@@ -119,20 +120,27 @@ export class FileWatcher {
 		if (hasTgUnpublished) intendedPlatforms.push('telegram');
 		if (hasFbUnpublished) intendedPlatforms.push('facebook');
 		if (hasThrUnpublished) intendedPlatforms.push('threads');
+		if (hasTwUnpublished) intendedPlatforms.push('twitter');
 		// If only cms_unpublished is used (no platform-specific), don't pre-select (use defaults)
 		
 		// Check if already scheduled or published (on any platform)
 		// cms_scheduled/cms_published are general workflow tags
-		// tg_scheduled, fb_scheduled, thr_scheduled are platform-specific
+		// tg_scheduled, fb_scheduled, thr_scheduled, tw_scheduled are platform-specific
 		const hasScheduled = normalizedTags.some(t => 
-			t === 'cms_scheduled' || t === 'tg_scheduled' || t === 'fb_scheduled' || t === 'thr_scheduled'
+			t === 'cms_scheduled' || t === 'tg_scheduled' || t === 'fb_scheduled' || t === 'thr_scheduled' || t === 'tw_scheduled'
 		);
 		const hasPublished = normalizedTags.some(t => 
-			t === 'cms_published' || t === 'tg_published' || t === 'fb_published' || t === 'thr_published'
+			t === 'cms_published' || t === 'tg_published' || t === 'fb_published' || t === 'thr_published' || t === 'tw_published'
 		);
 
 		// Must have both unpublished AND ready
 		if (!hasUnpublished || !hasReady) {
+			if (!hasUnpublished) {
+				console.log(`[Obsidigram] File needs an unpublished tag: #tg_unpublished, #fb_unpublished, #thr_unpublished, #tw_unpublished, or #cms_unpublished`);
+			}
+			if (!hasReady) {
+				console.log(`[Obsidigram] File needs #tg_ready or #cms_ready`);
+			}
 			return { isValid: false };
 		}
 
@@ -163,7 +171,7 @@ export class FileWatcher {
 		console.log(`[Obsidigram] hasReady: ${hasReady}, hasUnpublished: ${hasUnpublished}, hasScheduled: ${hasScheduled}, category: ${category}`);
 
 		if (!category) {
-			console.log(`[Obsidigram] No category tag found in: ${JSON.stringify(normalizedTags)}`);
+			console.log(`[Obsidigram] No category tag found. Add one of: #tg_economy, #tg_research, #tg_developer_ecosystem, etc. (see Settings for list). Current tags: ${JSON.stringify(normalizedTags)}`);
 			return { isValid: false };
 		}
 

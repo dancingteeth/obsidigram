@@ -403,6 +403,71 @@ export class ObsidigramSettingTab extends PluginSettingTab {
 		categoriesTextArea.addEventListener('change', updatePreview);
 
 		// ============================================
+		// X/Twitter Credentials (BYOK)
+		// ============================================
+		containerEl.createEl('h2', { text: '𝕏 X/Twitter (BYOK)' });
+		const twitterDesc = containerEl.createEl('p', { cls: 'setting-item-description' });
+		twitterDesc.appendText('Connect your own X/Twitter account. Create an app and generate credentials at the ');
+		twitterDesc.createEl('a', { text: 'X Developer Portal →', href: 'https://developer.twitter.com/en/portal/dashboard' });
+		twitterDesc.appendText(' — set permissions to Read and Write, then generate an Access Token and Secret.');
+
+		new Setting(containerEl)
+			.setName('API Key')
+			.setDesc('Consumer Key from your X app')
+			.addText((text: TextComponent) => {
+				text.setPlaceholder('API Key');
+				text.setValue(this.plugin.settings.twitterApiKey || '');
+				text.inputEl.style.width = '300px';
+				text.inputEl.type = 'password';
+				text.onChange(async (value: string) => {
+					this.plugin.settings.twitterApiKey = value.trim();
+					await this.plugin.saveSettings();
+				});
+			});
+
+		new Setting(containerEl)
+			.setName('API Secret')
+			.setDesc('Consumer Secret from your X app')
+			.addText((text: TextComponent) => {
+				text.setPlaceholder('API Secret');
+				text.setValue(this.plugin.settings.twitterApiSecret || '');
+				text.inputEl.style.width = '300px';
+				text.inputEl.type = 'password';
+				text.onChange(async (value: string) => {
+					this.plugin.settings.twitterApiSecret = value.trim();
+					await this.plugin.saveSettings();
+				});
+			});
+
+		new Setting(containerEl)
+			.setName('Access Token')
+			.setDesc('Generated for your X account (must have Read+Write)')
+			.addText((text: TextComponent) => {
+				text.setPlaceholder('Access Token');
+				text.setValue(this.plugin.settings.twitterAccessToken || '');
+				text.inputEl.style.width = '300px';
+				text.inputEl.type = 'password';
+				text.onChange(async (value: string) => {
+					this.plugin.settings.twitterAccessToken = value.trim();
+					await this.plugin.saveSettings();
+				});
+			});
+
+		new Setting(containerEl)
+			.setName('Access Token Secret')
+			.setDesc('Generated alongside your Access Token')
+			.addText((text: TextComponent) => {
+				text.setPlaceholder('Access Token Secret');
+				text.setValue(this.plugin.settings.twitterAccessTokenSecret || '');
+				text.inputEl.style.width = '300px';
+				text.inputEl.type = 'password';
+				text.onChange(async (value: string) => {
+					this.plugin.settings.twitterAccessTokenSecret = value.trim();
+					await this.plugin.saveSettings();
+				});
+			});
+
+		// ============================================
 		// Default Platforms Section
 		// ============================================
 		containerEl.createEl('h3', { text: 'Default Platforms' });

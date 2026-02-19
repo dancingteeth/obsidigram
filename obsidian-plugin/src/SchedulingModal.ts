@@ -3,7 +3,7 @@ import { TFile } from 'obsidian';
 import type ObsidigramPlugin from '../main';
 import { ApiClient } from './ApiClient';
 import { MarkdownConverter } from './MarkdownConverter';
-import type { ScheduledSlot, CategoryConfig, Platform, PlatformVerification } from './types';
+import type { ScheduledSlot, CategoryConfig, Platform, PlatformVerification, TwitterCredentials } from './types';
 import { DEFAULT_CATEGORIES } from './types';
 
 // Info about a busy slot
@@ -42,6 +42,12 @@ export class SchedulingModal extends Modal {
 	private selectedPlatforms: Set<Platform> = new Set(['telegram']);
 	// Platforms intended by user via tags (e.g., tg_unpublished, fb_unpublished)
 	private intendedPlatforms?: Platform[];
+	// X/Twitter character limit check
+	private twitterCharLimit = 280;
+	private twitterCharCount = 0;
+	// DOM refs for live-updating the Twitter char counter after AI shortening
+	private twitterCharRowEl: HTMLElement | null = null;
+	private twitterShortenEl: HTMLElement | null = null;
 	// Quick timer input reference
 	private timerMinutesInput: HTMLInputElement | null = null;
 
@@ -145,6 +151,24 @@ export class SchedulingModal extends Modal {
 			if (this.selectedPlatforms.size === 0) {
 				this.selectedPlatforms.add('telegram');
 			}
+
+			// Pick up the Twitter char limit from the verified platform info
+			const twitterVerification = platformsResponse.verified.find(v => v.platform === 'twitter');
+			if (twitterVerification?.charLimit) {
+				this.twitterCharLimit = twitterVerification.charLimit;
+			}
+		}
+
+		// Pre-compute the Twitter plain-text character count from the file
+		if (!this.readOnly && this.file && this.availablePlatforms.includes('twitter')) {
+			try {
+				const rawContent = await this.plugin.app.vault.read(this.file);
+				const htmlContent = MarkdownConverter.convertToTelegramHTML(rawContent);
+				this.twitterCharCount = SchedulingModal.toTwitterPlainText(htmlContent).length;
+				console.log(`[Obsidigram] Twitter char count: ${this.twitterCharCount} / ${this.twitterCharLimit}`);
+			} catch {
+				this.twitterCharCount = 0;
+			}
 		}
 
 		// Render platform selection (only in non-read-only mode)
@@ -165,13 +189,15 @@ export class SchedulingModal extends Modal {
 		const platformIcons: Record<Platform, string> = {
 			telegram: '✈️',
 			facebook: '📘',
-			threads: '🧵'
+			threads: '🧵',
+			twitter: '𝕏',
 		};
 		
 		const platformNames: Record<Platform, string> = {
 			telegram: 'Telegram',
 			facebook: 'Facebook',
-			threads: 'Threads'
+			threads: 'Threads',
+			twitter: 'X (Twitter)',
 		};
 		
 		this.availablePlatforms.forEach(platform => {
@@ -230,7 +256,152 @@ export class SchedulingModal extends Modal {
 					cls: 'obsidigram-platform-info'
 				});
 			}
+
+			// X/Twitter character counter + optional AI shorten button
+			if (platform === 'twitter' && isValid && this.twitterCharCount > 0) {
+				const charRow = platformRow.createDiv('obsidigram-twitter-chars');
+				charRow.style.fontSize = '11px';
+				charRow.style.marginTop = '3px';
+				charRow.style.marginLeft = '22px';
+				this.twitterCharRowEl = charRow;
+
+				this.renderTwitterCharRow(charRow);
+
+				// AI shorten area (only rendered if over limit)
+				const shortenEl = platformRow.createDiv('obsidigram-twitter-shorten');
+				shortenEl.style.marginLeft = '22px';
+				shortenEl.style.marginTop = '4px';
+				this.twitterShortenEl = shortenEl;
+				this.renderTwitterShortenArea(shortenEl);
+			}
 		});
+	}
+
+	/** Returns Twitter credentials from settings if all four are set, otherwise undefined */
+	private getTwitterCredentials(): { twitterCredentials: TwitterCredentials } | undefined {
+		const s = this.plugin.settings;
+		if (s.twitterApiKey && s.twitterApiSecret && s.twitterAccessToken && s.twitterAccessTokenSecret) {
+			return {
+				twitterCredentials: {
+					apiKey: s.twitterApiKey,
+					apiSecret: s.twitterApiSecret,
+					accessToken: s.twitterAccessToken,
+					accessTokenSecret: s.twitterAccessTokenSecret,
+				}
+			};
+		}
+		return undefined;
+	}
+
+	/** Render/refresh the character count line inside the Twitter platform row. */
+	private renderTwitterCharRow(el: HTMLElement): void {
+		el.empty();
+		const limit = this.twitterCharLimit;
+		const count = this.twitterCharCount;
+		const overLimit = count > limit;
+		const nearLimit = !overLimit && count / limit >= 0.8;
+		const planLabel = limit > 280 ? 'Premium' : 'Free/Basic';
+
+		el.style.color = overLimit
+			? 'var(--text-error)'
+			: nearLimit
+			? 'var(--text-warning)'
+			: 'var(--text-muted)';
+
+		el.setText(
+			overLimit
+				? `⚠ ${count.toLocaleString()} / ${limit.toLocaleString()} chars (${planLabel}) — too long to post`
+				: `${count.toLocaleString()} / ${limit.toLocaleString()} chars (${planLabel})`
+		);
+	}
+
+	/** Render/refresh the AI shorten area below the char row. */
+	private renderTwitterShortenArea(el: HTMLElement): void {
+		el.empty();
+		if (this.twitterCharCount <= this.twitterCharLimit) return;
+
+		const aiService = this.plugin.aiService;
+		if (aiService?.isEnabled()) {
+			const btn = el.createEl('button', {
+				text: '✂️ Shorten with AI',
+				cls: 'obsidigram-twitter-shorten-btn',
+			});
+			btn.style.fontSize = '11px';
+			btn.style.marginTop = '2px';
+			btn.style.cursor = 'pointer';
+			btn.addEventListener('click', () => this.shortenContentForTwitter(btn));
+		} else {
+			el.createEl('span', {
+				text: 'Enable AI features in settings to auto-shorten.',
+				cls: 'obsidigram-twitter-ai-hint',
+			}).style.cssText = 'font-size:11px; color:var(--text-muted);';
+		}
+	}
+
+	/** Call AI to shorten the file content, save, and refresh the counter in the modal. */
+	private async shortenContentForTwitter(btn: HTMLButtonElement): Promise<void> {
+		if (!this.file) return;
+		const aiService = this.plugin.aiService;
+		if (!aiService?.isEnabled()) return;
+
+		const originalText = btn.textContent || '';
+		btn.disabled = true;
+		btn.textContent = '⏳ Shortening…';
+
+		try {
+			const rawContent = await this.plugin.app.vault.read(this.file);
+			const shortened = await aiService.shortenForTwitter(
+				rawContent,
+				this.twitterCharLimit,
+				this.twitterCharCount
+			);
+
+			// Write shortened content back to the file
+			await this.plugin.app.vault.modify(this.file, shortened);
+
+			// Recount using the freshly saved content
+			const freshContent = await this.plugin.app.vault.read(this.file);
+			const htmlContent = MarkdownConverter.convertToTelegramHTML(freshContent);
+			this.twitterCharCount = SchedulingModal.toTwitterPlainText(htmlContent).length;
+			console.log(`[Obsidigram] Twitter char count after shortening: ${this.twitterCharCount}`);
+
+			// Refresh both display elements
+			if (this.twitterCharRowEl) this.renderTwitterCharRow(this.twitterCharRowEl);
+			if (this.twitterShortenEl) this.renderTwitterShortenArea(this.twitterShortenEl);
+
+			if (this.twitterCharCount <= this.twitterCharLimit) {
+				new Notice(`✅ Shortened to ${this.twitterCharCount.toLocaleString()} / ${this.twitterCharLimit.toLocaleString()} chars. Ready to schedule!`);
+			} else {
+				new Notice(`⚠️ Still ${this.twitterCharCount.toLocaleString()} chars — try shortening again.`);
+			}
+		} catch (error) {
+			console.error('[Obsidigram] AI shorten failed:', error);
+			new Notice(`❌ Shortening failed: ${error instanceof Error ? error.message : String(error)}`);
+			btn.disabled = false;
+			btn.textContent = originalText;
+		}
+	}
+
+	/**
+	 * Strip Telegram HTML tags → plain text, mirroring what the backend does before posting to X.
+	 * Used client-side for character counting before scheduling.
+	 */
+	static toTwitterPlainText(htmlContent: string): string {
+		let text = htmlContent;
+		text = text.replace(/<b>(.*?)<\/b>/g, '$1');
+		text = text.replace(/<i>(.*?)<\/i>/g, '$1');
+		text = text.replace(/<u>(.*?)<\/u>/g, '$1');
+		text = text.replace(/<s>(.*?)<\/s>/g, '$1');
+		text = text.replace(/<code>(.*?)<\/code>/g, '`$1`');
+		text = text.replace(/<pre>([\s\S]*?)<\/pre>/g, '```\n$1\n```');
+		text = text.replace(/<a href="(.*?)">(.*?)<\/a>/g, '$2 $1');
+		text = text.replace(/<blockquote>([\s\S]*?)<\/blockquote>/g, '> $1');
+		text = text.replace(/<[^>]+>/g, '');
+		text = text.replace(/&lt;/g, '<');
+		text = text.replace(/&gt;/g, '>');
+		text = text.replace(/&amp;/g, '&');
+		text = text.replace(/&quot;/g, '"');
+		return text.trim();
 	}
 
 	private formatPlatformError(error: string): string {
@@ -317,10 +488,12 @@ export class SchedulingModal extends Modal {
 					slotEl.setAttr('title', 'Past');
 				} else {
 					slotEl.setText('○');
-					slotEl.setAttr('title', 'Available');
-					slotEl.addEventListener('click', () => {
-						this.selectSlot(day, timeSlot);
-					});
+					slotEl.setAttr('title', this.readOnly ? 'Available (open a note with #tg_ready + #tg_unpublished to schedule)' : 'Available');
+					if (!this.readOnly) {
+						slotEl.addEventListener('click', () => {
+							this.selectSlot(day, timeSlot);
+						});
+					}
 				}
 			});
 		});
@@ -552,12 +725,8 @@ export class SchedulingModal extends Modal {
 		this.selectedDate = date;
 		this.selectedTime = time;
 
-		// Enable submit button using stored reference
 		if (this.submitButton) {
 			this.submitButton.disabled = false;
-			console.log(`[Obsidigram] Submit button enabled via stored reference`);
-		} else {
-			console.log(`[Obsidigram] WARNING: submitButton reference is null`);
 		}
 	}
 
@@ -604,6 +773,7 @@ export class SchedulingModal extends Modal {
 			!t.startsWith('tg_') && !t.startsWith('#tg_') &&
 			!t.startsWith('fb_') && !t.startsWith('#fb_') &&
 			!t.startsWith('thr_') && !t.startsWith('#thr_') &&
+			!t.startsWith('tw_') && !t.startsWith('#tw_') &&
 			!t.startsWith('cms_') && !t.startsWith('#cms_')
 		);
 		console.log(`[Obsidigram] Content tags: ${JSON.stringify(contentTags)}`);
@@ -616,18 +786,28 @@ export class SchedulingModal extends Modal {
 			return;
 		}
 
+		// X/Twitter char limit — hard block, do not truncate silently
+		if (platforms.includes('twitter') && this.twitterCharCount > this.twitterCharLimit) {
+			new Notice(
+				`❌ X content is ${this.twitterCharCount.toLocaleString()} / ${this.twitterCharLimit.toLocaleString()} characters. Shorten it before scheduling.`,
+				8000
+			);
+			return;
+		}
+
 		console.log(`[Obsidigram] Sending schedule request to API: ${this.plugin.settings.botApiUrl}`);
 		console.log(`[Obsidigram] Target platforms: ${platforms.join(', ')}`);
 		try {
-			const response = await this.apiClient.schedulePost({
-				action: 'schedule',
-				file_id: file.path,
-				content: telegramContent,
-				scheduled_time: scheduledTime,
-				category: this.category,
-				tags: contentTags,
-				platforms: platforms
-			});
+		const response = await this.apiClient.schedulePost({
+			action: 'schedule',
+			file_id: file.path,
+			content: telegramContent,
+			scheduled_time: scheduledTime,
+			category: this.category,
+			tags: contentTags,
+			platforms: platforms,
+			...(platforms.includes('twitter') && this.getTwitterCredentials()),
+		});
 
 			console.log(`[Obsidigram] API response:`, response);
 
@@ -674,6 +854,7 @@ export class SchedulingModal extends Modal {
 			!t.startsWith('tg_') && !t.startsWith('#tg_') &&
 			!t.startsWith('fb_') && !t.startsWith('#fb_') &&
 			!t.startsWith('thr_') && !t.startsWith('#thr_') &&
+			!t.startsWith('tw_') && !t.startsWith('#tw_') &&
 			!t.startsWith('cms_') && !t.startsWith('#cms_')
 		);
 		console.log(`[Obsidigram] Content tags: ${JSON.stringify(contentTags)}`);
@@ -686,17 +867,27 @@ export class SchedulingModal extends Modal {
 			return;
 		}
 
+		// X/Twitter char limit — hard block, do not truncate silently
+		if (platforms.includes('twitter') && this.twitterCharCount > this.twitterCharLimit) {
+			new Notice(
+				`❌ X content is ${this.twitterCharCount.toLocaleString()} / ${this.twitterCharLimit.toLocaleString()} characters. Shorten it before publishing.`,
+				8000
+			);
+			return;
+		}
+
 		console.log(`[Obsidigram] Sending publish request to API: ${this.plugin.settings.botApiUrl}`);
 		console.log(`[Obsidigram] Target platforms: ${platforms.join(', ')}`);
 		try {
-			const response = await this.apiClient.publishNow({
-				action: 'publish',
-				file_id: file.path,
-				content: telegramContent,
-				category: this.category,
-				tags: contentTags,
-				platforms: platforms
-			});
+		const response = await this.apiClient.publishNow({
+			action: 'publish',
+			file_id: file.path,
+			content: telegramContent,
+			category: this.category,
+			tags: contentTags,
+			platforms: platforms,
+			...(platforms.includes('twitter') && this.getTwitterCredentials()),
+		});
 
 			console.log(`[Obsidigram] API response:`, response);
 

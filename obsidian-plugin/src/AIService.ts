@@ -283,6 +283,54 @@ ${text}`;
 	}
 	
 	/**
+	 * Shorten a note's body content so it fits within the X/Twitter character limit.
+	 * Returns the full file content (frontmatter preserved, body replaced with shortened version).
+	 * charLimit should be the plain-text limit for the user's account plan.
+	 */
+	async shortenForTwitter(fileContent: string, charLimit: number, currentCount: number): Promise<string> {
+		if (!this.isEnabled()) {
+			throw new Error('AI features not enabled. Add an API key in settings.');
+		}
+
+		// Split off YAML frontmatter so we only shorten the body
+		const frontmatterMatch = fileContent.match(/^---\n[\s\S]*?\n---\n/);
+		const frontmatter = frontmatterMatch ? frontmatterMatch[0] : '';
+		const body = frontmatter ? fileContent.slice(frontmatter.length) : fileContent;
+
+		// Target slightly under the limit to give AI some breathing room
+		const targetChars = Math.floor(charLimit * 0.95);
+
+		const prompt = `You are a social media content editor specializing in X (Twitter).
+
+Shorten the following content so that, once all markdown formatting is stripped (bold/italic removed, links become "text url", code becomes plain text), the result is at most ${targetChars} characters.
+
+RULES:
+1. Preserve the core message and most important points
+2. Cut less essential details, examples, or elaborations
+3. Keep the original language, voice, and tone
+4. Do NOT include YAML frontmatter or hashtag lines
+5. You may keep light markdown (bold for key terms) if helpful
+6. Return ONLY the shortened content — no explanations, no "Here is..." preamble
+7. The final plain-text length MUST be ≤ ${targetChars} characters
+
+CURRENT LENGTH: ${currentCount} characters (limit: ${charLimit})
+
+CONTENT TO SHORTEN:
+${body.trim()}
+
+SHORTENED VERSION (≤ ${targetChars} plain-text chars):`;
+
+		const preset = this.getBestAvailablePreset();
+		if (!preset) throw new Error('No AI provider configured. Add an API key in settings.');
+
+		// Allow up to charLimit tokens — AI output shouldn't need more than the limit itself
+		const result = await this.callAPI(prompt, charLimit, preset);
+		const shortenedBody = result.trim();
+
+		return frontmatter + shortenedBody + '\n';
+	}
+
+	/**
 	 * Test API connection for a specific preset
 	 */
 	async testConnection(preset?: AIPreset): Promise<boolean> {

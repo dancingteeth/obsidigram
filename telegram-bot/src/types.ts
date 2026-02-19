@@ -1,4 +1,12 @@
-export type Platform = 'telegram' | 'facebook' | 'threads';
+export type Platform = 'telegram' | 'facebook' | 'threads' | 'twitter';
+
+/** Per-user X/Twitter OAuth1.0a credentials, sent from the plugin with each request */
+export interface TwitterCredentials {
+	apiKey: string;
+	apiSecret: string;
+	accessToken: string;
+	accessTokenSecret: string;
+}
 
 export interface PlatformPublishResult {
 	platform: Platform;
@@ -24,6 +32,8 @@ export interface ScheduledPost {
 	// Target channel for this post (required for multi-tenant)
 	chat_id: string;
 	message_id?: number; // Telegram message ID after publish
+	// Per-user X/Twitter credentials (BYOK), stored at schedule time and used at publish time
+	twitterCredentials?: TwitterCredentials;
 }
 
 export interface ScheduleRequest {
@@ -35,6 +45,7 @@ export interface ScheduleRequest {
 	tags: string[];
 	platforms?: Platform[];
 	chat_id?: string; // Set by API from authenticated user; client must not override
+	twitterCredentials?: TwitterCredentials;
 }
 
 export interface ScheduleResponse {

@@ -1,6 +1,6 @@
 /**
  * Multi-platform publisher
- * Coordinates publishing to Telegram, Facebook, and Threads
+ * Coordinates publishing to Telegram, Facebook, Threads, and X/Twitter
  */
 
 import { Bot } from 'grammy';
@@ -8,8 +8,11 @@ import { FacebookPublisher } from './facebook.js';
 import type { FacebookPostResult } from './facebook';
 import { ThreadsPublisher } from './threads.js';
 import type { ThreadsPostResult } from './threads';
+import { TwitterPublisher } from './twitter.js';
+import type { TwitterPostResult } from './twitter';
+import type { TwitterCredentials } from '../types.js';
 
-export type Platform = 'telegram' | 'facebook' | 'threads';
+export type Platform = 'telegram' | 'facebook' | 'threads' | 'twitter';
 
 export interface PublishResult {
 	platform: Platform;
@@ -29,12 +32,14 @@ export class MultiPlatformPublisher {
 	private telegramChatId: string;
 	private facebookPublisher: FacebookPublisher | null;
 	private threadsPublisher: ThreadsPublisher | null;
+	private twitterPublisher: TwitterPublisher | null;
 
 	constructor(telegramBot: Bot, telegramChatId: string) {
 		this.telegramBot = telegramBot;
 		this.telegramChatId = telegramChatId;
 		this.facebookPublisher = FacebookPublisher.fromEnv();
 		this.threadsPublisher = ThreadsPublisher.fromEnv();
+		this.twitterPublisher = TwitterPublisher.fromEnv();
 	}
 
 	/**
@@ -48,6 +53,9 @@ export class MultiPlatformPublisher {
 		}
 		if (this.threadsPublisher) {
 			platforms.push('threads');
+		}
+		if (this.twitterPublisher) {
+			platforms.push('twitter');
 		}
 		
 		return platforms;
@@ -83,8 +91,9 @@ export class MultiPlatformPublisher {
 
 	/**
 	 * Publish to a single platform (telegramChatId override for multi-tenant)
+	 * twitterCredentials — per-request user credentials (BYOK); falls back to env var publisher if absent
 	 */
-	async publishTo(platform: Platform, content: string, telegramChatIdOverride?: string): Promise<PublishResult> {
+	async publishTo(platform: Platform, content: string, telegramChatIdOverride?: string, twitterCredentials?: TwitterCredentials): Promise<PublishResult> {
 		switch (platform) {
 			case 'telegram':
 				return this.publishToTelegram(content, telegramChatIdOverride);
@@ -121,6 +130,34 @@ export class MultiPlatformPublisher {
 					error: threadsResult.error,
 				};
 			
+			case 'twitter': {
+				const publisher = twitterCredentials
+					? TwitterPublisher.fromCredentials(twitterCredentials)
+					: this.twitterPublisher;
+				if (!publisher) {
+					return {
+						platform: 'twitter',
+						success: false,
+						error: 'X/Twitter not configured — add credentials in plugin settings',
+					};
+				}
+				// Determine char limit at publish time by re-verifying the account plan
+				let charLimit = 280;
+				try {
+					const verification = await publisher.verifyToken();
+					charLimit = verification.charLimit ?? 280;
+				} catch {
+					// fall back to safe default
+				}
+				const twitterResult = await publisher.publish(content, charLimit);
+				return {
+					platform: 'twitter',
+					success: twitterResult.success,
+					postId: twitterResult.postId,
+					error: twitterResult.error,
+				};
+			}
+			
 			default:
 				return {
 					platform,
@@ -133,9 +170,9 @@ export class MultiPlatformPublisher {
 	/**
 	 * Publish to multiple platforms (telegramChatId override for per-post channel)
 	 */
-	async publishToMultiple(platforms: Platform[], content: string, telegramChatIdOverride?: string): Promise<MultiPublishResult> {
+	async publishToMultiple(platforms: Platform[], content: string, telegramChatIdOverride?: string, twitterCredentials?: TwitterCredentials): Promise<MultiPublishResult> {
 		const results = await Promise.all(
-			platforms.map(platform => this.publishTo(platform, content, telegramChatIdOverride))
+			platforms.map(platform => this.publishTo(platform, content, telegramChatIdOverride, twitterCredentials))
 		);
 
 		return {
@@ -155,8 +192,8 @@ export class MultiPlatformPublisher {
 	/**
 	 * Verify all configured tokens
 	 */
-	async verifyAllTokens(): Promise<{ platform: Platform; valid: boolean; info?: string; error?: string }[]> {
-		const results: { platform: Platform; valid: boolean; info?: string; error?: string }[] = [];
+	async verifyAllTokens(): Promise<{ platform: Platform; valid: boolean; info?: string; charLimit?: number; error?: string }[]> {
+		const results: { platform: Platform; valid: boolean; info?: string; charLimit?: number; error?: string }[] = [];
 
 		// Telegram - just check if bot can get me
 		try {
@@ -193,6 +230,23 @@ export class MultiPlatformPublisher {
 				valid: threadsResult.valid,
 				info: threadsResult.username,
 				error: threadsResult.error,
+			});
+		}
+
+		// X/Twitter
+		if (this.twitterPublisher) {
+			const twitterResult = await this.twitterPublisher.verifyToken();
+			const planLabel = twitterResult.subscriptionType && twitterResult.subscriptionType !== 'None'
+				? twitterResult.subscriptionType
+				: 'Free';
+			results.push({
+				platform: 'twitter',
+				valid: twitterResult.valid,
+				info: twitterResult.username
+					? `@${twitterResult.username} · ${planLabel}`
+					: undefined,
+				charLimit: twitterResult.charLimit,
+				error: twitterResult.error,
 			});
 		}
 

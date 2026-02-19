@@ -397,12 +397,13 @@ export default class ObsidigramPlugin extends Plugin {
 				frontmatter.tags = frontmatter.tags.filter((tag) => {
 					const tagStr = typeof tag === 'string' ? tag : String(tag);
 					const normalized = tagStr.replace(/^#/, '');
-					return normalized !== 'tg_unpublished' && normalized !== 'cms_unpublished' &&
-					       normalized !== 'fb_unpublished' && normalized !== 'thr_unpublished' &&
-					       normalized !== 'tg_ready' && normalized !== 'cms_ready';
-				});
+				return normalized !== 'tg_unpublished' && normalized !== 'cms_unpublished' &&
+				       normalized !== 'fb_unpublished' && normalized !== 'thr_unpublished' &&
+				       normalized !== 'tw_unpublished' &&
+				       normalized !== 'tg_ready' && normalized !== 'cms_ready';
+			});
 
-				// Add cms_scheduled if not already present
+			// Add cms_scheduled if not already present
 				const hasScheduled = frontmatter.tags.some((tag) => {
 					const tagStr = typeof tag === 'string' ? tag : String(tag);
 					const normalized = tagStr.replace(/^#/, '');
@@ -436,8 +437,8 @@ export default class ObsidigramPlugin extends Plugin {
 			const content = await this.app.vault.read(file);
 			const updatedContent = content
 				// Remove ready and unpublished inline tags (both legacy and new)
-				.replace(/#(tg_|cms_|fb_|thr_)ready\s*/g, '')
-				.replace(/#(tg_|cms_|fb_|thr_)unpublished\s*/g, '')
+				.replace(/#(tg_|cms_|fb_|thr_|tw_)ready\s*/g, '')
+				.replace(/#(tg_|cms_|fb_|thr_|tw_)unpublished\s*/g, '')
 				// Clean up any resulting double newlines
 				.replace(/\n{3,}/g, '\n\n')
 				// Clean up leading whitespace after frontmatter
@@ -484,11 +485,13 @@ export default class ObsidigramPlugin extends Plugin {
 				frontmatter.tags = frontmatter.tags.filter((tag) => {
 					const tagStr = typeof tag === 'string' ? tag : String(tag);
 					const normalized = tagStr.replace(/^#/, '');
-					return normalized !== 'tg_unpublished' && normalized !== 'cms_unpublished' &&
-					       normalized !== 'fb_unpublished' && normalized !== 'thr_unpublished' &&
-					       normalized !== 'tg_ready' && normalized !== 'cms_ready' &&
-					       normalized !== 'tg_scheduled' && normalized !== 'cms_scheduled' &&
-					       normalized !== 'fb_scheduled' && normalized !== 'thr_scheduled';
+				return normalized !== 'tg_unpublished' && normalized !== 'cms_unpublished' &&
+				       normalized !== 'fb_unpublished' && normalized !== 'thr_unpublished' &&
+				       normalized !== 'tw_unpublished' &&
+				       normalized !== 'tg_ready' && normalized !== 'cms_ready' &&
+				       normalized !== 'tg_scheduled' && normalized !== 'cms_scheduled' &&
+				       normalized !== 'fb_scheduled' && normalized !== 'thr_scheduled' &&
+				       normalized !== 'tw_scheduled';
 				});
 
 				// Also remove per-platform scheduled tags for successful platforms
@@ -537,11 +540,11 @@ export default class ObsidigramPlugin extends Plugin {
 				delete frontmatter.tg_scheduled_time;
 			});
 
-			// Remove inline tags from the file body
-			const content = await this.app.vault.read(file);
-			const updatedContent = content
-				.replace(/#(tg_|cms_|fb_|thr_)ready\s*/g, '')
-				.replace(/#(tg_|cms_|fb_|thr_)unpublished\s*/g, '')
+		// Remove inline tags from the file body
+		const content = await this.app.vault.read(file);
+		const updatedContent = content
+			.replace(/#(tg_|cms_|fb_|thr_|tw_)ready\s*/g, '')
+			.replace(/#(tg_|cms_|fb_|thr_|tw_)unpublished\s*/g, '')
 				.replace(/\n{3,}/g, '\n\n')
 				.replace(/^(---\n[\s\S]*?\n---\n)\s+/, '$1');
 			
@@ -613,8 +616,9 @@ export default class ObsidigramPlugin extends Plugin {
 					frontmatter.tags = frontmatter.tags.filter((tag) => {
 						const tagStr = typeof tag === 'string' ? tag : String(tag);
 						const normalized = tagStr.replace(/^#/, '');
-						return normalized !== 'tg_scheduled' && normalized !== 'cms_scheduled' &&
-						       normalized !== 'fb_scheduled' && normalized !== 'thr_scheduled';
+					return normalized !== 'tg_scheduled' && normalized !== 'cms_scheduled' &&
+					       normalized !== 'fb_scheduled' && normalized !== 'thr_scheduled' &&
+					       normalized !== 'tw_scheduled';
 					});
 
 					// Add tg_published for backwards compatibility (Telegram is always the primary)

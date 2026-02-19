@@ -209,8 +209,8 @@ export class Scheduler {
 			console.log(`  🏷️  Category: ${post.category}`);
 			console.log('─'.repeat(50));
 
-			const telegramChatId = post.chat_id || '';
-			const result = await this.publisher.publishToMultiple(targetPlatforms, post.content, telegramChatId);
+		const telegramChatId = post.chat_id || '';
+		const result = await this.publisher.publishToMultiple(targetPlatforms, post.content, telegramChatId, post.twitterCredentials);
 
 			// Log results per platform
 			for (const r of result.results) {

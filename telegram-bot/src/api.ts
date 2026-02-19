@@ -6,7 +6,8 @@ import type {
 	ScheduleRequest, 
 	ScheduleResponse, 
 	BusySlot,
-	Platform 
+	Platform,
+	TwitterCredentials
 } from './types.js';
 
 export interface AuthUser {
@@ -238,13 +239,14 @@ export function createApiRouter(storage: Storage, userStorage: UserStorage, sche
 			if (existingPost) {
 				// Update existing scheduled post
 				console.log(`[API] Updating existing scheduled post for ${request.file_id}`);
-				storage.updatePost(existingPost.id, {
-					content: request.content,
-					scheduled_time: request.scheduled_time,
-					category: request.category,
-					tags: request.tags || [],
-					platforms: (request.platforms && request.platforms.length > 0) ? request.platforms : ['telegram'],
-				});
+			storage.updatePost(existingPost.id, {
+				content: request.content,
+				scheduled_time: request.scheduled_time,
+				category: request.category,
+				tags: request.tags || [],
+				platforms: (request.platforms && request.platforms.length > 0) ? request.platforms : ['telegram'],
+				...(request.twitterCredentials && { twitterCredentials: request.twitterCredentials }),
+			});
 				
 				console.log('\n' + '─'.repeat(50));
 				console.log(`📝 POST RESCHEDULED (was already scheduled)`);
@@ -266,18 +268,19 @@ export function createApiRouter(storage: Storage, userStorage: UserStorage, sche
 			// Generate unique ID for new post
 			const id = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-			// Create scheduled post (chat_id from authenticated user)
-			const post = {
-				id,
-				file_id: request.file_id,
-				content: request.content,
-				scheduled_time: request.scheduled_time,
-				category: request.category,
-				tags: request.tags || [],
-				status: 'scheduled' as const,
-				platforms: (request.platforms && request.platforms.length > 0) ? request.platforms : ['telegram'] as Platform[],
-				chat_id: chatId,
-			};
+		// Create scheduled post (chat_id from authenticated user)
+		const post = {
+			id,
+			file_id: request.file_id,
+			content: request.content,
+			scheduled_time: request.scheduled_time,
+			category: request.category,
+			tags: request.tags || [],
+			status: 'scheduled' as const,
+			platforms: (request.platforms && request.platforms.length > 0) ? request.platforms : ['telegram'] as Platform[],
+			chat_id: chatId,
+			...(request.twitterCredentials && { twitterCredentials: request.twitterCredentials }),
+		};
 
 			storage.addPost(post);
 
@@ -349,18 +352,19 @@ export function createApiRouter(storage: Storage, userStorage: UserStorage, sche
 			// Generate unique ID
 			const id = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-			// Create post object with user's chat_id
-			const post = {
-				id,
-				file_id: request.file_id,
-				content: request.content,
-				scheduled_time: new Date().toISOString(),
-				category: request.category,
-				tags: request.tags || [],
-				status: 'scheduled' as const,
-				platforms: (request.platforms && request.platforms.length > 0) ? request.platforms : ['telegram'] as Platform[],
-				chat_id: chatId,
-			};
+		// Create post object with user's chat_id
+		const post = {
+			id,
+			file_id: request.file_id,
+			content: request.content,
+			scheduled_time: new Date().toISOString(),
+			category: request.category,
+			tags: request.tags || [],
+			status: 'scheduled' as const,
+			platforms: (request.platforms && request.platforms.length > 0) ? request.platforms : ['telegram'] as Platform[],
+			chat_id: chatId,
+			...(request.twitterCredentials && { twitterCredentials: request.twitterCredentials }),
+		};
 
 			// Add to storage temporarily
 			storage.addPost(post);

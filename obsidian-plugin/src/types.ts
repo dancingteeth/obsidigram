@@ -1,11 +1,12 @@
 // Publishing platforms
-export type Platform = 'telegram' | 'facebook' | 'threads';
+export type Platform = 'telegram' | 'facebook' | 'threads' | 'twitter';
 
 // Platform tag prefixes
 export const PLATFORM_TAG_PREFIXES: Record<Platform, string> = {
 	telegram: 'tg',
 	facebook: 'fb',
 	threads: 'thr',
+	twitter: 'tw',
 };
 
 // Category configuration with letter and color
@@ -58,6 +59,26 @@ export interface ObsidigramSettings {
 	// Translation Settings
 	// ============================================
 	
+	// ============================================
+	// X/Twitter Credentials (BYOK)
+	// ============================================
+
+	/** X/Twitter API Key (Consumer Key) */
+	twitterApiKey: string;
+
+	/** X/Twitter API Secret (Consumer Secret) */
+	twitterApiSecret: string;
+
+	/** X/Twitter Access Token */
+	twitterAccessToken: string;
+
+	/** X/Twitter Access Token Secret */
+	twitterAccessTokenSecret: string;
+
+	// ============================================
+	// Translation Settings
+	// ============================================
+
 	/** Enable translation feature */
 	enableTranslation: boolean;
 	
@@ -110,6 +131,12 @@ export const DEFAULT_SETTINGS: ObsidigramSettings = {
 	defaultAIPreset: 'fast',
 	defaultProofreadPreset: 'mistral',
 	
+	// X/Twitter (BYOK)
+	twitterApiKey: '',
+	twitterApiSecret: '',
+	twitterAccessToken: '',
+	twitterAccessTokenSecret: '',
+
 	// Translation
 	enableTranslation: true,
 	defaultTranslationLanguage: 'en'
@@ -125,6 +152,14 @@ export interface ScheduledSlot {
 	contentPreview?: string; // First ~100 chars of content
 }
 
+/** Per-user X/Twitter OAuth1.0a credentials sent with each request */
+export interface TwitterCredentials {
+	apiKey: string;
+	apiSecret: string;
+	accessToken: string;
+	accessTokenSecret: string;
+}
+
 export interface ScheduleRequest {
 	action: "schedule";
 	file_id: string;
@@ -133,6 +168,7 @@ export interface ScheduleRequest {
 	category: string;
 	tags: string[];
 	platforms?: Platform[]; // Target platforms
+	twitterCredentials?: TwitterCredentials;
 }
 
 export interface PublishRequest {
@@ -142,6 +178,7 @@ export interface PublishRequest {
 	category: string;
 	tags: string[];
 	platforms?: Platform[]; // Target platforms
+	twitterCredentials?: TwitterCredentials;
 }
 
 export interface ScheduleResponse {
@@ -172,6 +209,8 @@ export interface PlatformVerification {
 	platform: Platform;
 	valid: boolean;
 	info?: string;
+	/** Character limit for this platform/plan (e.g. 280 or 25000 for X) */
+	charLimit?: number;
 	error?: string;
 }
 
