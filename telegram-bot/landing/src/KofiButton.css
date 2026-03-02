@@ -1,60 +1,64 @@
 .kofi-button {
   position: fixed;
-  right: -2px;
+  right: 0;
   top: 50%;
-  transform: translateY(-50%) rotate(-90deg);
-  transform-origin: right center;
+  transform: translateY(-50%);
   background: linear-gradient(135deg, #ff5e5b 0%, #ff4757 100%);
   color: white;
   text-decoration: none;
-  padding: 14px 28px;
-  border-radius: 8px 8px 0 0;
-  box-shadow: -3px 3px 12px rgba(0, 0, 0, 0.2);
+  padding: 16px 12px;
+  border-radius: 8px 0 0 8px;
+  box-shadow: -3px 3px 12px rgba(0, 0, 0, 0.25);
   transition: all 0.3s ease;
   z-index: 1000;
-  font-weight: 600;
-  font-size: 16px;
+  font-weight: 700;
+  font-size: 14px;
   display: none;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  letter-spacing: 1px;
 }
 
 /* Show only on desktop (768px and up) */
 @media (min-width: 768px) {
   .kofi-button {
-    display: block;
+    display: flex;
   }
 }
 
 .kofi-button:hover {
   background: linear-gradient(135deg, #ff4757 0%, #ff3838 100%);
-  box-shadow: -4px 4px 16px rgba(0, 0, 0, 0.3);
-  transform: translateY(-50%) rotate(-90deg) translateX(-8px);
+  box-shadow: -4px 4px 16px rgba(0, 0, 0, 0.35);
+  transform: translateY(-50%) translateX(-6px);
+  padding-left: 18px;
 }
 
 .kofi-button-content {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .kofi-icon {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   fill: currentColor;
   flex-shrink: 0;
+  transform: rotate(90deg);
 }
 
 .kofi-text {
   white-space: nowrap;
-  letter-spacing: 0.3px;
 }
 
 /* Pulse animation on load */
 @keyframes kofi-pulse {
   0%, 100% {
-    transform: translateY(-50%) rotate(-90deg) scale(1);
+    transform: translateY(-50%) scale(1);
   }
   50% {
-    transform: translateY(-50%) rotate(-90deg) scale(1.05);
+    transform: translateY(-50%) scale(1.05);
   }
 }
 
