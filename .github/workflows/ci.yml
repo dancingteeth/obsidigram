@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build plugin
+        run: pnpm --filter obsidigram run build
+
+      - name: Build plugin archive
+        run: pnpm run plugin-archive
+
+      - name: Build landing
+        run: pnpm --filter obsidigram-landing run build
+
+      - name: Build bot
+        run: pnpm --filter obsidigram-bot run build
+
+  health-check:
+    name: API connectivity
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push'
+    steps:
+      - name: Check API health
+        run: |
+          URL="${API_HEALTH_URL:-https://obsidigram.dancingteeth.net/health}"
+          echo "Checking $URL ..."
+          curl -sf --connect-timeout 10 --max-time 15 "$URL" && echo "✅ API is reachable" || exit 1
+        env:
+          API_HEALTH_URL: ${{ secrets.API_HEALTH_URL }}

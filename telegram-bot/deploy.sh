@@ -28,9 +28,11 @@ if [ ! -f "$LOCAL_DIR/.env" ] && [ ! -f "$LOCAL_DIR/env.example" ]; then
     exit 1
 fi
 
-# Step 1: Build landing page and bot
-echo -e "${YELLOW}📦 Building landing page...${NC}"
+# Step 1: Build plugin archive, landing page, and bot
+echo -e "${YELLOW}📦 Building plugin archive (for site download)...${NC}"
 cd "$PROJECT_ROOT"
+pnpm run plugin-archive
+echo -e "${YELLOW}📦 Building landing page...${NC}"
 pnpm --filter obsidigram-landing run build
 echo -e "${YELLOW}📦 Building TypeScript...${NC}"
 pnpm --filter obsidigram-bot run build

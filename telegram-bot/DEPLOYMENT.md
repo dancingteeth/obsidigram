@@ -27,6 +27,34 @@ Or manually:
 ./deploy.sh
 ```
 
+## GitHub Actions
+
+CI and deploy run via GitHub Actions.
+
+### Workflows
+
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| **CI** | Push/PR to `master` | Build plugin, plugin archive, landing, bot; check API connectivity |
+| **Deploy** | Push to `master`, or manual (Actions → Deploy → Run workflow) | Deploy website to server, update plugin archive, start container |
+
+### Required Secrets
+
+For **Deploy** to work, add these in **Settings → Secrets and variables → Actions**:
+
+| Secret | Description |
+|--------|-------------|
+| `SSH_PRIVATE_KEY` | Private key for `root@DEPLOY_HOST` (add the corresponding public key to `~/.ssh/authorized_keys` on the server) |
+| `DEPLOY_HOST` | Server hostname or IP (e.g. `149.102.148.156`) |
+| `API_HEALTH_URL` | (Optional) Base URL for health check, e.g. `https://obsidigram.dancingteeth.net`. Defaults to that if unset. |
+
+### First-time setup
+
+1. Generate a deploy key: `ssh-keygen -t ed25519 -C "github-deploy" -f deploy_key -N ""`
+2. Add `deploy_key.pub` contents to `/root/.ssh/authorized_keys` on the server
+3. Add `deploy_key` (private key) as `SSH_PRIVATE_KEY` secret
+4. Add your server IP/hostname as `DEPLOY_HOST` secret
+
 ## What the Deployment Script Does
 
 1. **Builds locally** - Compiles TypeScript to verify it builds

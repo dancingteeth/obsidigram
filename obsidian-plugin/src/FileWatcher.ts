@@ -1,6 +1,7 @@
 import { TFile, MetadataCache, CachedMetadata } from 'obsidian';
 import type ObsidigramPlugin from '../main';
 import type { Platform } from './types';
+import { DEFAULT_CATEGORIES } from './types';
 
 export interface FileValidationResult {
 	isValid: boolean;
@@ -149,17 +150,12 @@ export class FileWatcher {
 			return { isValid: false, hasScheduled: true };
 		}
 
-		// Check for category tag - support both tg_ and cms_ prefixes
-		const categoryNames = [
-			'research',
-			'infrastructure_energy',
-			'slop_misinformation',
-			'security_fraud',
-			'economy',
-			'developer_ecosystem'
-		];
+		// Check for category tag - use configured categories from Settings, support both tg_ and cms_ prefixes
+		// Also accept any #tg_* or #cms_* tag as category (e.g. #tg_jewelry) - SchedulingModal fallback handles display
+		const categories = this.plugin.settings.categories || DEFAULT_CATEGORIES;
+		const categoryNames = categories.map(c => c.name);
+		const workflowTags = ['ready', 'unpublished', 'scheduled', 'published'];
 
-		// Look for category with either prefix
 		let category: string | undefined;
 		for (const catName of categoryNames) {
 			if (normalizedTags.includes(`tg_${catName}`) || normalizedTags.includes(`cms_${catName}`)) {
@@ -167,11 +163,22 @@ export class FileWatcher {
 				break;
 			}
 		}
-		
+		// Fallback: any tg_* or cms_* tag that isn't a workflow tag counts as category
+		if (!category) {
+			for (const tag of normalizedTags) {
+				const match = tag.match(/^(tg_|cms_)(.+)$/);
+				if (match && !workflowTags.includes(match[2])) {
+					category = match[2];
+					break;
+				}
+			}
+		}
+
 		console.log(`[Obsidigram] hasReady: ${hasReady}, hasUnpublished: ${hasUnpublished}, hasScheduled: ${hasScheduled}, category: ${category}`);
 
 		if (!category) {
-			console.log(`[Obsidigram] No category tag found. Add one of: #tg_economy, #tg_research, #tg_developer_ecosystem, etc. (see Settings for list). Current tags: ${JSON.stringify(normalizedTags)}`);
+			const examples = categoryNames.slice(0, 4).map(n => `#tg_${n}`).join(', ');
+			console.log(`[Obsidigram] No category tag found. Add one from Settings (e.g. ${examples}) or use any #tg_* tag. Current tags: ${JSON.stringify(normalizedTags)}`);
 			return { isValid: false };
 		}
 

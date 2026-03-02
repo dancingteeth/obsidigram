@@ -32,13 +32,13 @@ const ObsidianStone = () => {
       <mesh ref={meshRef} scale={2.5}>
         <icosahedronGeometry args={[1, 0]} />
         <MeshDistortMaterial
-          color="#000000"
+          color="#1a0a2e"
           speed={2}
           distort={0.4}
-          roughness={0.1}
-          metalness={1}
-          emissive="#1a0033"
-          emissiveIntensity={0.2}
+          roughness={0.25}
+          metalness={0.9}
+          emissive="#2d1b4e"
+          emissiveIntensity={0.4}
         >
           <GradientTexture
             stops={[0, 0.5, 1]}
@@ -56,14 +56,18 @@ const TELEGRAM_BLUE_DARK = '#006699';
 
 export const ObsidianBackground = () => {
   return (
-    <div style={{ width: '100%', height: '100vh', background: TELEGRAM_BLUE }}>
+    <div style={{ width: '100%', height: '33.33vh', minHeight: 200, background: TELEGRAM_BLUE }}>
       <Canvas gl={{ alpha: false }}>
         <PerspectiveCamera makeDefault position={[0, 0, 5]} />
         <color attach="background" args={[TELEGRAM_BLUE]} />
-        <Environment preset="night" />
-        <ambientLight intensity={0.2} />
-        <pointLight position={[10, 10, 10]} color="#ff4d00" intensity={1} />
-        <pointLight position={[-10, -10, -10]} color="#7c3aed" intensity={1} />
+        <Environment preset="night" intensity={0.4} />
+        <ambientLight intensity={0.5} />
+        {/* Key: front-right, warm — lights the main visible faces */}
+        <pointLight position={[4, 2, 6]} color="#ff4d00" intensity={2} distance={12} />
+        {/* Fill: front-left, purple */}
+        <pointLight position={[-3, 2, 6]} color="#7c3aed" intensity={1.5} distance={12} />
+        {/* Rim: behind and below so edges separate from background */}
+        <pointLight position={[-2, -1, -3]} color="#7c3aed" intensity={0.8} distance={10} />
         <ObsidianStone />
         <mesh scale={10}>
           <sphereGeometry args={[1, 64, 64]} />

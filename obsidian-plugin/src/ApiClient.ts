@@ -26,9 +26,17 @@ export class ApiClient {
 		return h;
 	}
 
+	private requireApiKey(): boolean {
+		if (!this.apiKey) {
+			new Notice('Obsidigram: Set your API key in Settings → Obsidigram (get it from @obsidigram_cms_bot)');
+			return false;
+		}
+		return true;
+	}
+
 	private async handleResponse<T>(response: Response, parse: () => Promise<T>): Promise<T | null> {
 		if (response.status === 401) {
-			new Notice('Invalid API key. Get one from @obsidigram_cms_bot');
+			new Notice('Obsidigram: Invalid API key. Get one from @obsidigram_cms_bot and set it in Settings.');
 			return null;
 		}
 		if (!response.ok) {
@@ -38,6 +46,7 @@ export class ApiClient {
 	}
 
 	async getBusySlots(timeSlots?: string[]): Promise<BusySlotsResponse | null> {
+		if (!this.requireApiKey()) return null;
 		try {
 			let url = `${this.baseUrl}/api/schedule`;
 			const params = new URLSearchParams();
@@ -64,6 +73,7 @@ export class ApiClient {
 	}
 
 	async schedulePost(request: ScheduleRequest): Promise<ScheduleResponse | null> {
+		if (!this.requireApiKey()) return null;
 		try {
 			const response = await fetch(`${this.baseUrl}/api/schedule`, {
 				method: 'POST',
@@ -81,6 +91,7 @@ export class ApiClient {
 	}
 
 	async getPublishedPosts(): Promise<PublishedResponse | null> {
+		if (!this.requireApiKey()) return null;
 		try {
 			const response = await fetch(`${this.baseUrl}/api/published`, {
 				method: 'GET',
@@ -97,6 +108,7 @@ export class ApiClient {
 	}
 
 	async publishNow(request: PublishRequest): Promise<PublishResponse | null> {
+		if (!this.requireApiKey()) return null;
 		try {
 			const response = await fetch(`${this.baseUrl}/api/publish`, {
 				method: 'POST',
@@ -114,6 +126,7 @@ export class ApiClient {
 	}
 
 	async getPlatforms(): Promise<PlatformsResponse | null> {
+		if (!this.requireApiKey()) return null;
 		try {
 			const response = await fetch(`${this.baseUrl}/api/platforms`, {
 				method: 'GET',

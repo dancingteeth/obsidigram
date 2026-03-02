@@ -484,6 +484,7 @@ export class ObsidigramSettingTab extends PluginSettingTab {
 
 		const allPlatforms: { id: Platform; name: string; icon: string }[] = [
 			{ id: 'telegram', name: 'Telegram', icon: '✈️' },
+			{ id: 'twitter', name: 'X (Twitter)', icon: '𝕏' },
 			// TODO: debug and re-enable
 			// { id: 'facebook', name: 'Facebook', icon: '📘' },
 			// { id: 'threads', name: 'Threads', icon: '🧵' },

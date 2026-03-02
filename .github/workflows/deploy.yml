@@ -1,0 +1,90 @@
+name: Deploy
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to server
+    runs-on: ubuntu-latest
+    env:
+      REMOTE_DIR: /root/obsidigram
+      PROJECT_ROOT: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check deploy secrets
+        run: |
+          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ] || [ -z "${{ secrets.DEPLOY_HOST }}" ]; then
+            echo "::error::Configure SSH_PRIVATE_KEY and DEPLOY_HOST in repo secrets (Settings → Secrets)"
+            exit 1
+          fi
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build plugin archive (updates website download)
+        run: pnpm run plugin-archive
+
+      - name: Build landing
+        run: pnpm --filter obsidigram-landing run build
+
+      - name: Build bot
+        run: pnpm --filter obsidigram-bot run build
+
+      - name: Deploy via rsync
+        run: |
+          rsync -avz --delete \
+            --exclude 'node_modules' \
+            --exclude 'dist' \
+            --exclude 'data' \
+            --exclude 'logs' \
+            --exclude '.env' \
+            --exclude '.git' \
+            --exclude '*.log' \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new" \
+            "$PROJECT_ROOT/" "root@${{ secrets.DEPLOY_HOST }}:$REMOTE_DIR/"
+
+      - name: Install and build on server
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no "root@${{ secrets.DEPLOY_HOST }}" \
+            "cd $REMOTE_DIR && corepack enable && CI=true pnpm install --frozen-lockfile && \
+             pnpm --filter obsidigram-landing run build && pnpm --filter obsidigram-bot run build && \
+             CI=true pnpm install --prod --frozen-lockfile"
+
+      - name: Build and start Docker
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no "root@${{ secrets.DEPLOY_HOST }}" \
+            "cd $REMOTE_DIR && docker compose -f telegram-bot/docker-compose.yml build && \
+             docker compose -f telegram-bot/docker-compose.yml down 2>/dev/null; \
+             docker rm -f obsidigram-bot 2>/dev/null; \
+             docker compose -f telegram-bot/docker-compose.yml up -d"
+
+      - name: Health check
+        run: |
+          sleep 5
+          URL="${API_HEALTH_URL:-https://obsidigram.dancingteeth.net}/health"
+          echo "Checking $URL ..."
+          curl -sf --connect-timeout 10 "$URL" && echo "✅ Deploy healthy" || echo "⚠️ Health check failed"
+        env:
+          API_HEALTH_URL: ${{ secrets.API_HEALTH_URL }}
+        if: always()

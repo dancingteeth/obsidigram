@@ -1,3 +1,7 @@
+# Deploy keys (for GitHub Actions)
+deploy_key
+deploy_key.pub
+
 # Environment files
 .env
 .env.*
