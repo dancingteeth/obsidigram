@@ -1,19 +1,19 @@
 .kofi-button {
   position: fixed;
-  right: 0;
+  right: -2px;
   top: 50%;
   transform: translateY(-50%) rotate(-90deg);
   transform-origin: right center;
   background: linear-gradient(135deg, #ff5e5b 0%, #ff4757 100%);
   color: white;
   text-decoration: none;
-  padding: 12px 24px;
+  padding: 14px 28px;
   border-radius: 8px 8px 0 0;
-  box-shadow: -2px 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: -3px 3px 12px rgba(0, 0, 0, 0.2);
   transition: all 0.3s ease;
   z-index: 1000;
   font-weight: 600;
-  font-size: 15px;
+  font-size: 16px;
   display: none;
 }
 
@@ -26,8 +26,8 @@
 
 .kofi-button:hover {
   background: linear-gradient(135deg, #ff4757 0%, #ff3838 100%);
-  box-shadow: -2px 2px 12px rgba(0, 0, 0, 0.25);
-  transform: translateY(-50%) rotate(-90deg) translateX(-4px);
+  box-shadow: -4px 4px 16px rgba(0, 0, 0, 0.3);
+  transform: translateY(-50%) rotate(-90deg) translateX(-8px);
 }
 
 .kofi-button-content {
