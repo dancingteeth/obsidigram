@@ -29,6 +29,29 @@ function App() {
           Submitting to Community Plugins soon. Found a bug? Send it my way — the plugin is ready for testing.
         </p>
 
+        <div className="steps">
+          <strong>Quick start</strong>
+          <ol>
+            <li>
+              <a href="https://t.me/obsidigram_cms_bot" className="bot-link">
+                Open @obsidigram_cms_bot
+              </a>{' '}
+              in Telegram
+            </li>
+            <li>Forward a message from your channel, add the bot as admin, send /verify</li>
+            <li>Copy your API key into Obsidian → Settings → Obsidigram</li>
+            <li>Tag notes with <code>#cms_ready</code> <code>#cms_unpublished</code>, pick a slot, schedule</li>
+          </ol>
+        </div>
+        <div className="video-wrapper">
+          <iframe
+            src="https://www.youtube.com/embed/mBc9yNb8XT8"
+            title="Obsidigram demo"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        </div>
+
         <section className="features">
           <h2>✨ Features</h2>
           
@@ -83,29 +106,6 @@ function App() {
           </div>
         </section>
 
-        <div className="steps">
-          <strong>Quick start</strong>
-          <ol>
-            <li>
-              <a href="https://t.me/obsidigram_cms_bot" className="bot-link">
-                Open @obsidigram_cms_bot
-              </a>{' '}
-              in Telegram
-            </li>
-            <li>Forward a message from your channel, add the bot as admin, send /verify</li>
-            <li>Copy your API key into Obsidian → Settings → Obsidigram</li>
-            <li>Tag notes with <code>#cms_ready</code> <code>#cms_unpublished</code>, pick a slot, schedule</li>
-          </ol>
-        </div>
-        <div className="video-wrapper">
-          <iframe
-            src="https://www.youtube.com/embed/mBc9yNb8XT8"
-            title="Obsidigram demo"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
-        </div>
-        
         <div className="support-section">
           <p>
             ☕ Enjoying Obsidigram? <a href="https://ko-fi.com/dancingteeth" target="_blank" rel="noopener noreferrer" className="support-link">Support the project on Ko-fi</a>
