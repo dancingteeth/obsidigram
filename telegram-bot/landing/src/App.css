@@ -87,6 +87,14 @@ html.dark .community-note {
   color: #94a3b8;
 }
 
+.story {
+  color: #475569;
+  margin-bottom: 1.5rem;
+}
+html.dark .story {
+  color: #94a3b8;
+}
+
 .content code {
   font-size: 0.9em;
   background: #f1f5f9;

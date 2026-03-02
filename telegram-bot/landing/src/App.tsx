@@ -28,6 +28,17 @@ function App() {
         <p className="community-note">
           Submitting to Community Plugins soon. Found a bug? Send it my way — the plugin is ready for testing.
         </p>
+        <p className="story">
+          Built this for my own workflow — I publish{' '}
+          <a href="https://t.me/thevacuumcleanergetssmart" target="_blank" rel="noopener noreferrer">
+            The Vacuum Cleaner Gets Smart
+          </a>
+          , a Telegram channel on AI and tech, straight from Obsidian. Also on{' '}
+          <a href="https://dancingteeth.substack.com" target="_blank" rel="noopener noreferrer">
+            Substack
+          </a>
+          .
+        </p>
 
         <div className="steps">
           <strong>Quick start</strong>
