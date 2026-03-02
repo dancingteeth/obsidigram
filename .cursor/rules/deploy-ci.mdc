@@ -1,0 +1,11 @@
+---
+description: Deploy only via GitHub Actions; do not run deploy.sh for production
+alwaysApply: true
+---
+
+# CI / Deployment
+
+- **Deploy only via GitHub Actions.** Do not run `deploy.sh` or `pnpm run deploy` for production.
+- To deploy: push to `master` or manually trigger the Deploy workflow (Actions → Deploy → Run workflow).
+- CI runs on push/PR: builds plugin, archive, landing, bot; checks API connectivity.
+- See `AGENTS.md` and `telegram-bot/DEPLOYMENT.md` for details.

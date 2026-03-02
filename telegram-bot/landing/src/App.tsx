@@ -1,5 +1,6 @@
 import { ObsidianBackground } from './ObsidianBackground';
 import { KofiButton } from './KofiButton';
+import { ThemeSwitcher } from './ThemeSwitcher';
 import './App.css';
 
 function App() {
@@ -7,6 +8,9 @@ function App() {
     <>
       <KofiButton />
       <header className="hero">
+        <div className="theme-switcher-wrap">
+          <ThemeSwitcher />
+        </div>
         <ObsidianBackground />
         <div className="hero-content">
           <h1>Obsidigram</h1>

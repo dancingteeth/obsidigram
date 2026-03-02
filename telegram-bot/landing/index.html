@@ -6,6 +6,9 @@
   <title>Obsidigram — Headless CMS for Telegram</title>
 </head>
 <body>
+  <script>
+    (function(){var t=localStorage.getItem('theme');var d=window.matchMedia('(prefers-color-scheme:dark)').matches;var r=t||(d?'dark':'light');document.documentElement.classList.toggle('dark',r==='dark')})();
+  </script>
   <div id="root"></div>
   <script type="module" src="/src/main.tsx"></script>
 </body>

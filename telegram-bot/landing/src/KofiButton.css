@@ -3,7 +3,7 @@
   right: 0;
   top: 50%;
   transform: translateY(-50%);
-  background: linear-gradient(135deg, #ff5e5b 0%, #ff4757 100%);
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
   color: white;
   text-decoration: none;
   padding: 16px 12px;
@@ -27,7 +27,7 @@
 }
 
 .kofi-button:hover {
-  background: linear-gradient(135deg, #ff4757 0%, #ff3838 100%);
+  background: linear-gradient(135deg, #047857 0%, #059669 100%);
   box-shadow: -4px 4px 16px rgba(0, 0, 0, 0.35);
   transform: translateY(-50%) translateX(-6px);
   padding-left: 18px;

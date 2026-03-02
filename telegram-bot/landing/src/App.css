@@ -1,3 +1,29 @@
+.theme-switcher-wrap {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 10;
+}
+
+.theme-switcher {
+  padding: 0.5rem;
+  border-radius: 8px;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  background: rgba(0, 0, 0, 0.2);
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.theme-switcher:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.9);
+}
+.theme-switcher-placeholder .theme-switcher-icon {
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+
 .hero {
   position: relative;
   width: 100%;
@@ -34,10 +60,18 @@
   margin: 0 auto;
   padding: 2rem 1.5rem;
   background: #fff;
+  transition: background-color 0.2s ease;
+}
+html.dark .content {
+  background: #1c1917;
 }
 
 .content p {
   margin-bottom: 1rem;
+  transition: color 0.2s ease;
+}
+html.dark .content p {
+  color: #e7e5e4;
 }
 
 .plugin-download {
@@ -49,13 +83,21 @@
   background: #f1f5f9;
   padding: 0.15em 0.4em;
   border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+html.dark .content code {
+  background: #44403c;
+  color: #d6d3d1;
 }
 
 .content a {
   color: #7c3aed;
   text-decoration: none;
+  transition: color 0.2s ease;
 }
-
+html.dark .content a {
+  color: #a78bfa;
+}
 .content a:hover {
   text-decoration: underline;
 }
@@ -65,6 +107,10 @@
   padding: 1.25rem 1.5rem;
   border-radius: 8px;
   margin: 1.5rem 0;
+  transition: background-color 0.2s ease;
+}
+html.dark .steps {
+  background: #292524;
 }
 
 .steps ol {
@@ -74,6 +120,13 @@
 
 .steps li {
   margin-bottom: 0.5rem;
+  transition: color 0.2s ease;
+}
+html.dark .steps li {
+  color: #e7e5e4;
+}
+html.dark .steps strong {
+  color: #fafaf9;
 }
 
 .bot-link {
@@ -105,6 +158,10 @@
   font-size: 1.75rem;
   margin-bottom: 1.5rem;
   color: #1e293b;
+  transition: color 0.2s ease;
+}
+html.dark .features h2 {
+  color: #fafaf9;
 }
 
 .feature-group {
@@ -113,17 +170,30 @@
   background: #f8fafc;
   border-radius: 8px;
   border-left: 4px solid #7c3aed;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+html.dark .feature-group {
+  background: #292524;
+  border-left-color: #7c3aed;
 }
 
 .feature-group.coming-soon {
   border-left-color: #94a3b8;
   background: #f1f5f9;
 }
+html.dark .feature-group.coming-soon {
+  border-left-color: #78716c;
+  background: #292524;
+}
 
 .feature-group h3 {
   font-size: 1.125rem;
   margin: 0 0 0.75rem;
   color: #334155;
+  transition: color 0.2s ease;
+}
+html.dark .feature-group h3 {
+  color: #e7e5e4;
 }
 
 .feature-group ul {
@@ -136,6 +206,10 @@
   margin-bottom: 0.5rem;
   color: #475569;
   line-height: 1.6;
+  transition: color 0.2s ease;
+}
+html.dark .feature-group li {
+  color: #a8a29e;
 }
 
 .feature-group li:last-child {
@@ -147,6 +221,11 @@
   background: #e2e8f0;
   padding: 0.15em 0.4em;
   border-radius: 3px;
+  transition: background-color 0.2s ease;
+}
+html.dark .feature-group code {
+  background: #44403c;
+  color: #d6d3d1;
 }
 
 .support-section {
@@ -159,10 +238,14 @@
     text-align: center;
     margin: 2rem 0;
     padding: 1.5rem;
-    background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%);
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
     border-radius: 8px;
-    border: 2px solid #ff5e5b;
+    border: 2px solid #059669;
   }
+}
+html.dark .support-section {
+  background: linear-gradient(135deg, #064e3b 0%, #065f46 100%);
+  border-color: #10b981;
 }
 
 .support-section p {
@@ -170,21 +253,41 @@
   font-size: 1.125rem;
   color: #334155;
 }
+html.dark .support-section p {
+  color: #e7e5e4;
+}
 
 .support-link {
   font-weight: 600;
-  color: #ff4757 !important;
+  color: #059669 !important;
   text-decoration: none;
   transition: all 0.2s ease;
 }
+html.dark .support-link {
+  color: #34d399 !important;
+}
 
 .support-link:hover {
-  color: #ff3838 !important;
+  color: #047857 !important;
   text-decoration: underline;
+}
+html.dark .support-link:hover {
+  color: #10b981 !important;
 }
 
 footer {
   margin-top: 3rem;
   font-size: 0.875rem;
   color: #666;
+  transition: color 0.2s ease;
+}
+html.dark footer {
+  color: #a8a29e;
+}
+
+/* Dark mode video wrapper */
+html.dark .video-wrapper {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
 }

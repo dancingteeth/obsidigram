@@ -55,6 +55,8 @@ rsync -avz --delete \
     --exclude '.env' \
     --exclude '.git' \
     --exclude '*.log' \
+    --exclude 'deploy_key' \
+    --exclude 'deploy_key.pub' \
     "$PROJECT_ROOT/" "$SERVER:$REMOTE_DIR/"
 echo -e "${GREEN}✅ Files transferred${NC}"
 echo ""
