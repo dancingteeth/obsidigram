@@ -56,7 +56,10 @@ const TELEGRAM_BLUE_DARK = '#006699';
 
 export const ObsidianBackground = () => {
   return (
-    <div style={{ width: '100%', height: '33.33vh', minHeight: 200, background: TELEGRAM_BLUE }}>
+    <div
+      className="obsidian-bg"
+      style={{ background: TELEGRAM_BLUE, width: '100%', height: '100%' }}
+    >
       <Canvas gl={{ alpha: false }}>
         <PerspectiveCamera makeDefault position={[0, 0, 5]} />
         <color attach="background" args={[TELEGRAM_BLUE]} />

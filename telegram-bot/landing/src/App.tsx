@@ -6,49 +6,52 @@ import './App.css';
 function App() {
   return (
     <>
+      <ObsidianBackground />
+      <div className="theme-switcher-wrap">
+        <ThemeSwitcher />
+      </div>
       <KofiButton />
-      <header className="hero">
-        <div className="theme-switcher-wrap">
-          <ThemeSwitcher />
-        </div>
-        <ObsidianBackground />
-        <div className="hero-content">
+      <main className="content-overlay">
+        <div className="card card-hero">
           <h1>Obsidigram</h1>
           <p className="subtitle">Turn Obsidian into a headless CMS for multiple platforms.</p>
         </div>
-      </header>
-      <main className="content">
-        <p>Schedule and publish your notes from Obsidian to Telegram, X/Twitter, and more.</p>
-        <p>
-          <a href="/obsidigram-plugin.zip" className="plugin-download" download>
-            Download Obsidigram plugin (ZIP)
-          </a>{' '}
-          — drop into your vault's <code>.obsidian/plugins/obsidigram/</code> and enable in Settings.
-        </p>
-        <p className="community-note">
-          Submitting to Community Plugins soon. Found a bug? Send it my way — the plugin is ready for testing.
-        </p>
-        <p className="story">
-          Built this for my own workflow — I publish{' '}
-          <a href="https://t.me/thevacuumcleanergetssmart" target="_blank" rel="noopener noreferrer">
-            The Vacuum Cleaner Gets Smart
-          </a>
-          , a Telegram channel on AI and tech, straight from Obsidian. Also on{' '}
-          <a href="https://dancingteeth.substack.com" target="_blank" rel="noopener noreferrer">
-            Substack
-          </a>
-          .
-        </p>
 
-        <div className="video-wrapper">
-          <iframe
-            src="https://www.youtube.com/embed/mBc9yNb8XT8"
-            title="Obsidigram demo"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
+        <div className="card card-intro">
+          <p>Schedule and publish your notes from Obsidian to Telegram, X/Twitter, and more.</p>
+          <p>
+            <a href="/obsidigram-plugin.zip" className="plugin-download" download>
+              Download Obsidigram plugin (ZIP)
+            </a>{' '}
+            — drop into your vault's <code>.obsidian/plugins/obsidigram/</code> and enable in Settings.
+          </p>
+          <p className="community-note">
+            Submitting to Community Plugins soon. Found a bug? Send it my way — the plugin is ready for testing.
+          </p>
+          <p className="story">
+            Built this for my own workflow — I publish{' '}
+            <a href="https://t.me/thevacuumcleanergetssmart" target="_blank" rel="noopener noreferrer">
+              The Vacuum Cleaner Gets Smart
+            </a>
+            , a Telegram channel on AI and tech, straight from Obsidian. Also on{' '}
+            <a href="https://dancingteeth.substack.com" target="_blank" rel="noopener noreferrer">
+              Substack
+            </a>
+            .
+          </p>
         </div>
-        <div className="steps">
+
+        <div className="card card-video">
+          <div className="video-wrapper">
+            <iframe
+              src="https://www.youtube.com/embed/mBc9yNb8XT8"
+              title="Obsidigram demo"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        </div>
+        <div className="card card-steps">
           <strong>Quick start</strong>
           <ol>
             <li>
@@ -63,7 +66,7 @@ function App() {
           </ol>
         </div>
 
-        <section className="features">
+        <section className="card card-features">
           <h2>✨ Features</h2>
           
           <div className="feature-group">
@@ -117,13 +120,13 @@ function App() {
           </div>
         </section>
 
-        <div className="support-section">
+        <div className="card support-section">
           <p>
             ☕ Enjoying Obsidigram? <a href="https://ko-fi.com/dancingteeth" target="_blank" rel="noopener noreferrer" className="support-link">Support the project on Ko-fi</a>
           </p>
         </div>
 
-        <footer>dancingteeth · MIT</footer>
+        <footer className="card card-footer">dancingteeth · MIT</footer>
       </main>
     </>
   );
