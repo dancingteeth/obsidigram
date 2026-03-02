@@ -396,8 +396,22 @@ async function main() {
 	// Landing page at /
 	app.use(express.static(join(__dirname, '../public')));
 
-	app.get('/health', (req, res) => {
-		res.json({ status: 'ok', timestamp: new Date().toISOString() });
+	app.get('/health', async (req, res) => {
+		try {
+			const me = await bot.api.getMe();
+			res.json({
+				status: 'ok',
+				timestamp: new Date().toISOString(),
+				telegram: { connected: true, bot: `@${me.username}` },
+			});
+		} catch (err) {
+			console.error('[API] Health check Telegram error:', err);
+			res.status(503).json({
+				status: 'degraded',
+				timestamp: new Date().toISOString(),
+				telegram: { connected: false, error: err instanceof Error ? err.message : String(err) },
+			});
+		}
 	});
 
 	app.listen(PORT, () => {
