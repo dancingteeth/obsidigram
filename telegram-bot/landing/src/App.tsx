@@ -25,6 +25,9 @@ function App() {
           </a>{' '}
           — drop into your vault's <code>.obsidian/plugins/obsidigram/</code> and enable in Settings.
         </p>
+        <p className="community-note">
+          Submitting to Community Plugins soon. Found a bug? Send it my way — the plugin is ready for testing.
+        </p>
 
         <section className="features">
           <h2>✨ Features</h2>

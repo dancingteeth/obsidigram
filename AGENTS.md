@@ -1,3 +1,8 @@
+---
+tags:
+  - documentation
+  - obsidigram
+---
 # AGENTS.md — Obsidigram
 
 > Agent instructions for the Obsidigram project (Obsidian plugin + Telegram bot CMS).

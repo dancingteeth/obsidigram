@@ -78,6 +78,15 @@ html.dark .content p {
   font-weight: 600;
 }
 
+.community-note {
+  font-style: italic;
+  color: #64748b;
+  margin-bottom: 1.5rem;
+}
+html.dark .community-note {
+  color: #94a3b8;
+}
+
 .content code {
   font-size: 0.9em;
   background: #f1f5f9;
