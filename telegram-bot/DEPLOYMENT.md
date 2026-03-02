@@ -35,12 +35,14 @@ CI and deploy run via GitHub Actions.
 
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
-| **CI** | Push/PR to `master` | Build plugin, plugin archive, landing, bot; check API connectivity |
-| **Deploy** | Push to `master`, or manual (Actions → Deploy → Run workflow) | Deploy website to server, update plugin archive, start container |
+| **CI** | Push/PR to `master` (path-filtered) | Build plugin, plugin archive, landing, bot |
+| **Deploy** | When CI completes successfully, or manual (Actions → Deploy → Run workflow) | Deploy to server, update plugin archive, start container, health check |
 
 ### Required Secrets
 
 For **Deploy** to work, add these in **Settings → Secrets and variables → Actions**:
+
+> **Doppler**: Not needed yet. Obsidigram uses only 2–3 GitHub secrets (SSH, host). Consider Doppler when adding staging/prod environments or many build-time env vars.
 
 | Secret | Description |
 |--------|-------------|

@@ -1,28 +1,44 @@
 name: Deploy
 
+# Deploy only when CI succeeds (or manually). Path filters skip deploys when only docs/tests change.
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [master]
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     name: Deploy to server
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     env:
       REMOTE_DIR: /root/obsidigram
       PROJECT_ROOT: ${{ github.workspace }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
 
       - name: Check deploy secrets
         run: |
+          set -euo pipefail
           if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ] || [ -z "${{ secrets.DEPLOY_HOST }}" ]; then
             echo "::error::Configure SSH_PRIVATE_KEY and DEPLOY_HOST in repo secrets (Settings → Secrets)"
             exit 1
           fi
 
-      - uses: pnpm/action-setup@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -32,6 +48,7 @@ jobs:
 
       - name: Setup SSH
         run: |
+          set -euo pipefail
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
@@ -51,6 +68,7 @@ jobs:
 
       - name: Deploy via rsync
         run: |
+          set -euo pipefail
           rsync -avz --delete \
             --exclude 'node_modules' \
             --exclude 'dist' \
@@ -64,6 +82,7 @@ jobs:
 
       - name: Install and build on server
         run: |
+          set -euo pipefail
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no "root@${{ secrets.DEPLOY_HOST }}" \
             "cd $REMOTE_DIR && corepack enable && CI=true pnpm install --frozen-lockfile && \
              pnpm --filter obsidigram-landing run build && pnpm --filter obsidigram-bot run build && \
@@ -71,6 +90,7 @@ jobs:
 
       - name: Build and start Docker
         run: |
+          set -euo pipefail
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no "root@${{ secrets.DEPLOY_HOST }}" \
             "cd $REMOTE_DIR && docker compose -f telegram-bot/docker-compose.yml build && \
              docker compose -f telegram-bot/docker-compose.yml down 2>/dev/null; \
@@ -78,8 +98,19 @@ jobs:
              docker compose -f telegram-bot/docker-compose.yml up -d"
 
       - name: Health check (via SSH)
+        if: success()
         run: |
+          set -euo pipefail
+          echo "Waiting for container to start..."
           sleep 5
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no "root@${{ secrets.DEPLOY_HOST }}" \
-            "curl -sf http://localhost:3001/health | grep -q '\"telegram\":{\"connected\":true' && echo '✅ API + Telegram healthy' || (echo '⚠️ Health check failed'; exit 1)"
-        if: always()
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            if ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no "root@${{ secrets.DEPLOY_HOST }}" \
+              "curl -sf http://localhost:3001/health 2>/dev/null | grep -q '\"telegram\":{\"connected\":true'"; then
+              echo "✅ API + Telegram healthy"
+              exit 0
+            fi
+            echo "  Attempt $i/10: waiting 3s..."
+            sleep 3
+          done
+          echo "⚠️ Health check failed after 10 attempts"
+          exit 1
