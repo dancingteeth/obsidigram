@@ -1,9 +1,11 @@
 import { ObsidianBackground } from './ObsidianBackground';
+import { KofiButton } from './KofiButton';
 import './App.css';
 
 function App() {
   return (
     <>
+      <KofiButton />
       <header className="hero">
         <ObsidianBackground />
         <div className="hero-content">
@@ -98,9 +100,6 @@ function App() {
             allowFullScreen
           />
         </div>
-        <p className="support">
-          <a href="https://ko-fi.com/dancingteeth">Enjoying the plugin? Support me!</a>
-        </p>
         <footer>dancingteeth · MIT</footer>
       </main>
     </>
