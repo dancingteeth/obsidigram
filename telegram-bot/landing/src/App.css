@@ -51,7 +51,6 @@
 /* Geometric card base - angled corners */
 .card {
   --card-bg: rgba(255, 255, 255, 0.95);
-  --card-border: rgba(124, 58, 237, 0.5);
   width: 100%;
   max-width: 640px;
   background: var(--card-bg);
@@ -61,13 +60,12 @@
     100% 0, 100% calc(100% - 12px),
     calc(100% - 12px) 100%, 0 100%
   );
-  border: 2px solid var(--card-border);
+  border: none;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
 html.dark .card {
   --card-bg: rgba(28, 25, 23, 0.95);
-  --card-border: rgba(167, 139, 250, 0.4);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
@@ -170,11 +168,9 @@ html.dark .content-overlay a {
 /* Quick start card */
 .card-steps {
   --card-bg: #f5f3ff;
-  --card-border: rgba(124, 58, 237, 0.6);
 }
 html.dark .card-steps {
   --card-bg: #292524;
-  --card-border: rgba(167, 139, 250, 0.5);
 }
 
 .card-steps ol {
@@ -221,15 +217,15 @@ html.dark .card-features h2 {
     100% 0, 100% calc(100% - 6px),
     calc(100% - 6px) 100%, 0 100%
   );
-  border-left: 4px solid #7c3aed;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  border-left: 4px solid #cbd5e1;
+  transition: background-color 0.2s ease;
 }
 .feature-group:last-child {
   margin-bottom: 0;
 }
 html.dark .feature-group {
   background: #1c1917;
-  border-left-color: #7c3aed;
+  border-left-color: #64748b;
 }
 
 .feature-group.coming-soon {
@@ -286,20 +282,17 @@ html.dark .feature-group code {
 /* Support section card */
 .support-section {
   display: none;
-  --card-bg: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
-  --card-border: #059669;
 }
 @media (max-width: 767px) {
   .support-section {
     display: block;
     text-align: center;
     background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%) !important;
-    border: 2px solid #059669 !important;
+    border: none !important;
   }
 }
 html.dark .support-section {
   background: linear-gradient(135deg, #064e3b 0%, #065f46 100%) !important;
-  border-color: #10b981 !important;
 }
 
 .support-section p {
