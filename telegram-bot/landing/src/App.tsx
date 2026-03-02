@@ -40,6 +40,14 @@ function App() {
           .
         </p>
 
+        <div className="video-wrapper">
+          <iframe
+            src="https://www.youtube.com/embed/mBc9yNb8XT8"
+            title="Obsidigram demo"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        </div>
         <div className="steps">
           <strong>Quick start</strong>
           <ol>
@@ -53,14 +61,6 @@ function App() {
             <li>Copy your API key into Obsidian → Settings → Obsidigram</li>
             <li>Tag notes with <code>#cms_ready</code> <code>#cms_unpublished</code>, pick a slot, schedule</li>
           </ol>
-        </div>
-        <div className="video-wrapper">
-          <iframe
-            src="https://www.youtube.com/embed/mBc9yNb8XT8"
-            title="Obsidigram demo"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
         </div>
 
         <section className="features">
