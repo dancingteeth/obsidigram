@@ -98,6 +98,13 @@ function App() {
             allowFullScreen
           />
         </div>
+        
+        <div className="support-section">
+          <p>
+            ☕ Enjoying Obsidigram? <a href="https://ko-fi.com/dancingteeth" target="_blank" rel="noopener noreferrer" className="support-link">Support the project on Ko-fi</a>
+          </p>
+        </div>
+
         <footer>dancingteeth · MIT</footer>
       </main>
     </>

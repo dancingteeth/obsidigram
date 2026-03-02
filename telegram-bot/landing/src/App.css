@@ -149,6 +149,33 @@
   border-radius: 3px;
 }
 
+.support-section {
+  text-align: center;
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%);
+  border-radius: 8px;
+  border: 2px solid #ff5e5b;
+}
+
+.support-section p {
+  margin: 0;
+  font-size: 1.125rem;
+  color: #334155;
+}
+
+.support-link {
+  font-weight: 600;
+  color: #ff4757 !important;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.support-link:hover {
+  color: #ff3838 !important;
+  text-decoration: underline;
+}
+
 footer {
   margin-top: 3rem;
   font-size: 0.875rem;
