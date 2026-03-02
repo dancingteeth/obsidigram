@@ -36,17 +36,4 @@ jobs:
       - name: Build bot
         run: pnpm --filter obsidigram-bot run build
 
-  health-check:
-    name: API + Telegram connectivity
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.event_name == 'push'
-    steps:
-      - name: Check API and Telegram connectivity
-        run: |
-          URL="${API_HEALTH_URL:-https://obsidigram.dancingteeth.net}/health"
-          echo "Checking $URL (API + Telegram bot connectivity)..."
-          resp=$(curl -sf --connect-timeout 10 --max-time 15 "$URL") || exit 1
-          echo "$resp" | grep -q '"telegram":{"connected":true' && echo "✅ API reachable, Telegram connected" || (echo "⚠️ API up but Telegram not connected"; exit 1)
-        env:
-          API_HEALTH_URL: ${{ secrets.API_HEALTH_URL }}
+  # Health check runs in Deploy workflow via SSH (public URL may be unreachable from GitHub runners)
