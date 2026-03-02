@@ -62,8 +62,6 @@ function App() {
             <ul>
               <li>BYOK for X/Twitter — credentials stay in your vault</li>
               <li>Multi-tenant — each channel has isolated scheduling</li>
-              <li>Self-hostable — deploy on your own server</li>
-              <li>Open source — MIT license</li>
             </ul>
           </div>
 
