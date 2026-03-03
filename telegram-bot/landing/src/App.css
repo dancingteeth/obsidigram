@@ -153,6 +153,7 @@ html.dark .content-overlay a {
   left: 0;
   width: 100%;
   height: 100%;
+  border: none;
 }
 
 /* Quick start card */
