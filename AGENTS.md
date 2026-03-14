@@ -5,21 +5,24 @@ tags:
 ---
 # AGENTS.md — Obsidigram
 
-> Agent instructions for the Obsidigram project (Obsidian plugin + Telegram bot CMS).
+> Agent instructions for the Obsidigram project (Obsidian plugin + Telegram bot CMS + Landing).
 
 ## Project Overview
 
-Obsidigram is a system that turns Obsidian into a headless CMS for Telegram scheduling. It consists of two main components:
+Obsidigram is a system that turns Obsidian into a headless CMS for multi-platform scheduling (Telegram, Facebook, Threads, and X/Twitter). It consists of three main components:
 
 - **obsidian-plugin**: Obsidian plugin for content creation and scheduling
-- **telegram-bot**: Telegram bot API server that handles scheduling and publishing
+- **telegram-bot**: Telegram bot API server that handles scheduling and multi-platform publishing
+- **landing**: Landing page website for the project
 
 ## Tech Stack
 
 - **Language**: TypeScript
 - **Runtime**: Node.js 20+
 - **Package Manager**: pnpm 9.15.0
-- **Framework**: Express.js for API, Grammy for Telegram bot
+- **Frameworks**: 
+  - API & Bot: Express.js, Grammy
+  - Landing: React, Vite, Three.js
 - **Testing**: Vitest for bot, manual testing for plugin
 - **Deployment**: Docker containers, GitHub Actions CI/CD
 
@@ -29,9 +32,10 @@ Obsidigram is a system that turns Obsidian into a headless CMS for Telegram sche
 obsidigram/
 ├── obsidian-plugin/      # Obsidian plugin source
 ├── telegram-bot/         # Telegram bot API server
-│   ├── src/              # TypeScript source
+│   ├── src/              # TypeScript source (API & publishers)
 │   ├── public/           # Static assets
 │   ├── test/             # Vitest tests
+│   ├── landing/          # Landing page (React + Vite)
 │   ├── Dockerfile        # Container configuration
 │   └── docker-compose.yml
 ├── .github/workflows/    # GitHub Actions workflows
@@ -44,11 +48,11 @@ The project uses a pnpm workspace with separate build processes:
 
 - **Plugin**: `pnpm --filter obsidigram run build` (TypeScript + esbuild)
 - **Bot**: `pnpm --filter obsidigram-bot run build` (TypeScript compiler)
-- **Landing**: `pnpm --filter obsidigram-landing run build`
+- **Landing**: `pnpm --filter obsidigram-landing run build` (Vite build)
 
 ## CI / Deployment
 
-**Build and deploy only via GitHub Actions.** Do not run `pnpm run build`, `deploy.sh`, or `pnpm run deploy` locally for verification or production.
+**Build and deploy only via GitHub Actions.** Do not run `deploy.sh` or `pnpm run deploy` locally for production deployment.
 
 ### Workflows
 
@@ -64,7 +68,7 @@ The project uses a pnpm workspace with separate build processes:
   - Performs health checks via SSH
 
 - **Release workflow** (`.github/workflows/release.yml`):
-  - Handles version bumping and release creation
+  - Packages assets and creates a GitHub Release when a tag is pushed
 
 ### Required Secrets
 
@@ -74,7 +78,6 @@ For deployment to work, configure these in **Settings → Secrets and variables 
 |--------|-------------|
 | `SSH_PRIVATE_KEY` | Private key for server access |
 | `DEPLOY_HOST` | Server hostname or IP |
-| `API_HEALTH_URL` | (Optional) Base URL for health check |
 
 See `telegram-bot/DEPLOYMENT.md` for detailed deployment setup.
 
@@ -84,18 +87,19 @@ See `telegram-bot/DEPLOYMENT.md` for detailed deployment setup.
 
 1. Install pnpm: `npm install -g pnpm@9.15.0`
 2. Install dependencies: `pnpm install`
-3. Set up environment: Copy `telegram-bot/.env.example` to `.env` and configure
+3. Set up environment: Copy `telegram-bot/.env.example` to `.env` in the repository root and configure
 
 ### Development Scripts
 
 - **Bot development**: `pnpm --filter obsidigram-bot run dev` (watches and restarts)
 - **Plugin development**: `pnpm --filter obsidigram run dev` (watches and rebuilds)
+- **Landing development**: `pnpm --filter obsidigram-landing run dev` (Vite dev server)
 - **Tests**: `pnpm --filter obsidigram-bot run test` (Vitest)
 - **Full build**: `pnpm run build` (builds all components)
 
 ### Environment Variables
 
-The bot requires a `.env` file in `telegram-bot/` with:
+The bot requires a `.env` file in the repository root with:
 
 ```env
 BOT_TOKEN=<your_telegram_bot_token>
@@ -116,13 +120,12 @@ Server structure after deployment:
 
 ```
 /root/obsidigram/
-├── src/              # TypeScript source files
-├── dist/             # Compiled JavaScript
 ├── data/             # Persistent scheduled posts
 ├── logs/             # Application logs
-├── .env              # Environment variables
-├── Dockerfile
-└── docker-compose.yml
+├── .env              # Environment variables (loaded via ../.env in docker-compose)
+└── telegram-bot/
+    ├── Dockerfile
+    └── docker-compose.yml
 ```
 
 ## Testing
