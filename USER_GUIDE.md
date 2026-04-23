@@ -1,8 +1,9 @@
 ---
 
 ## tags:
-  - documentation
-  - obsidigram
+
+- documentation
+- obsidigram
 
 # Obsidigram User Guide
 
@@ -29,21 +30,23 @@ If Telegram cannot confirm admin access yet, the bot may still send an API key i
 
 ### Bot commands (private chat)
 
-| Command | What it does |
-|--------|----------------|
-| **/start** | Already linked: shows channel name, API key, and shortcuts. New user: short onboarding checklist. |
-| **/verify** | Re-checks that the bot is admin in your saved channel; marks the account verified and echoes the **API key**. |
-| **/apikey** | Shows the current API key. **/apikey reset** issues a new key—update Obsidian afterwards. |
-| **/schedule** | Sends your channel’s **queued** posts: each item is a separate message (time + HTML body preview). |
-| **/status** | Counts **scheduled** vs **published** posts stored for your channel. |
-| **/post** | With no argument: numbered list of scheduled posts. **/post 2** publishes item **#2 immediately** (early manual publish). |
-| **/cancel** | With no argument: numbered list. **/cancel 1** removes that scheduled row from the server queue (your vault note is unchanged). |
-| **/clear** | Deletes **all** scheduled posts for your channel from the server queue. |
+
+| Command        | What it does                                                                                                                                  |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| **/start**     | Already linked: shows channel name, API key, and shortcuts. New user: short onboarding checklist.                                             |
+| **/verify**    | Re-checks that the bot is admin in your saved channel; marks the account verified and echoes the **API key**.                                 |
+| **/apikey**    | Shows the current API key. **/apikey reset** issues a new key—update Obsidian afterwards.                                                     |
+| **/schedule**  | Sends your channel’s **queued** posts: each item is a separate message (time + HTML body preview).                                            |
+| **/status**    | Counts **scheduled** vs **published** posts stored for your channel.                                                                          |
+| **/post**      | With no argument: numbered list of scheduled posts. **/post 2** publishes item **#2 immediately** (early manual publish).                     |
+| **/cancel**    | With no argument: numbered list. **/cancel 1** removes that scheduled row from the server queue (your vault note is unchanged).               |
+| **/clear**     | Deletes **all** scheduled posts for your channel from the server queue.                                                                       |
 | **/platforms** | Reports which publisher backends this server instance has configured (Telegram always; Facebook / Threads / X when env or credentials allow). |
+
 
 ### How the bot relates to Obsidian
 
-- The **plugin** schedules and syncs via **`/api/...`** using `Authorization: Bearer <API key>`.
+- The **plugin** schedules and syncs via `**/api/...`** using `Authorization: Bearer <API key>`.
 - The **bot** uses the same **user + channel** records: the API key belongs to your Telegram user and verified **channel id**.
 - A **minute-based cron** on the server publishes **due** posts; choosing **Publish now** in Obsidian or **/post** in Telegram bypasses the wait for that item.
 
@@ -89,7 +92,7 @@ Bring your own API keys for translation and proofreading.
 
 ## Multi-Platform Publishing
 
-Obsidigram can publish to Telegram, Facebook, and Threads. Configure Facebook/Threads tokens in the bot server. Select platforms per-post in the scheduling modal or set defaults in Settings.
+Obsidigram can publish to Telegram, Facebook, and Threads. **Facebook and Threads** on the server use **one set of tokens** from the bot’s environment (not per Obsidian user). By default those platforms are **hidden in the Obsidian scheduling modal** so other people’s API keys do not see your Page name or post there by mistake. The server operator can set `**API_EXPOSE_SERVER_META_PLATFORMS=true`** in the bot `.env` if the whole instance should expose Facebook/Threads in the plugin API (single-tenant setups). **X/Twitter** can still be chosen per user via credentials in Obsidian settings (BYOK).
 
 ## Obsidian commands
 
@@ -104,3 +107,4 @@ Obsidigram can publish to Telegram, Facebook, and Threads. Configure Facebook/Th
 - Categories control the letter badge (e.g. R, I, S) on posts
 - Time slots are customizable in Settings
 - Markdown converts to Telegram HTML (bold, links, etc.)
+

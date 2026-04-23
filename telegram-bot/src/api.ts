@@ -20,6 +20,51 @@ export interface AuthRequest extends Request {
 	user?: AuthUser;
 }
 
+/** Platforms backed only by server env (same Page/Threads account for every API key). */
+const SERVER_WIDE_META_PLATFORMS: ReadonlySet<Platform> = new Set(['facebook', 'threads']);
+
+function parseEnvBoolTrue(v: string | undefined): boolean {
+	if (!v?.trim()) return false;
+	return ['1', 'true', 'yes', 'on'].includes(v.trim().toLowerCase());
+}
+
+/**
+ * When false (default), Facebook/Threads that use `FB_*` / `THREADS_*` env are omitted from
+ * Obsidian `/api/*` responses and stripped from schedule/publish requests. Otherwise every
+ * verified API key sees the operator's Page name and could post there. Set
+ * `API_EXPOSE_SERVER_META_PLATFORMS=true` on single-tenant hosts where that is intended.
+ */
+function exposeServerMetaPlatformsToObsidianApi(): boolean {
+	return parseEnvBoolTrue(process.env.API_EXPOSE_SERVER_META_PLATFORMS);
+}
+
+type PlatformVerificationRow = {
+	platform: Platform;
+	valid: boolean;
+	info?: string;
+	charLimit?: number;
+	error?: string;
+};
+
+function filterObsidianApiPlatforms(
+	platforms: Platform[],
+	verified: PlatformVerificationRow[]
+): { platforms: Platform[]; verified: PlatformVerificationRow[] } {
+	if (exposeServerMetaPlatformsToObsidianApi()) {
+		return { platforms, verified };
+	}
+	return {
+		platforms: platforms.filter((p) => !SERVER_WIDE_META_PLATFORMS.has(p)),
+		verified: verified.filter((v) => !SERVER_WIDE_META_PLATFORMS.has(v.platform)),
+	};
+}
+
+function stripServerMetaPlatformsFromRequest(platforms: Platform[]): Platform[] {
+	if (exposeServerMetaPlatformsToObsidianApi()) return platforms;
+	const filtered = platforms.filter((p) => !SERVER_WIDE_META_PLATFORMS.has(p));
+	return filtered.length > 0 ? filtered : ['telegram'];
+}
+
 function authMiddleware(userStorage: UserStorage) {
 	return (req: AuthRequest, res: Response, next: NextFunction) => {
 		const authHeader = req.headers.authorization;
@@ -73,7 +118,11 @@ export function createApiRouter(storage: Storage, userStorage: UserStorage, sche
 					})
 				: verified;
 
-			res.json({ platforms, verified: verifiedForClient });
+			const { platforms: platformsOut, verified: verifiedOut } = filterObsidianApiPlatforms(
+				platforms,
+				verifiedForClient as PlatformVerificationRow[]
+			);
+			res.json({ platforms: platformsOut, verified: verifiedOut });
 		} catch (error) {
 			console.error('[API] Error getting platforms:', error);
 			res.status(500).json({ 
@@ -252,12 +301,15 @@ export function createApiRouter(storage: Storage, userStorage: UserStorage, sche
 			if (existingPost) {
 				// Update existing scheduled post
 				console.log(`[API] Updating existing scheduled post for ${request.file_id}`);
+			const platformsForPost = stripServerMetaPlatformsFromRequest(
+				request.platforms && request.platforms.length > 0 ? request.platforms : ['telegram']
+			);
 			storage.updatePost(existingPost.id, {
 				content: request.content,
 				scheduled_time: request.scheduled_time,
 				category: request.category,
 				tags: request.tags || [],
-				platforms: (request.platforms && request.platforms.length > 0) ? request.platforms : ['telegram'],
+				platforms: platformsForPost,
 				...(request.twitterCredentials && { twitterCredentials: request.twitterCredentials }),
 			});
 				
@@ -281,6 +333,9 @@ export function createApiRouter(storage: Storage, userStorage: UserStorage, sche
 			// Generate unique ID for new post
 			const id = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
+		const platformsForPost = stripServerMetaPlatformsFromRequest(
+			request.platforms && request.platforms.length > 0 ? request.platforms : ['telegram']
+		);
 		// Create scheduled post (chat_id from authenticated user)
 		const post = {
 			id,
@@ -290,7 +345,7 @@ export function createApiRouter(storage: Storage, userStorage: UserStorage, sche
 			category: request.category,
 			tags: request.tags || [],
 			status: 'scheduled' as const,
-			platforms: (request.platforms && request.platforms.length > 0) ? request.platforms : ['telegram'] as Platform[],
+			platforms: platformsForPost as Platform[],
 			chat_id: chatId,
 			...(request.twitterCredentials && { twitterCredentials: request.twitterCredentials }),
 		};
@@ -365,6 +420,9 @@ export function createApiRouter(storage: Storage, userStorage: UserStorage, sche
 			// Generate unique ID
 			const id = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
+		const platformsForPost = stripServerMetaPlatformsFromRequest(
+			request.platforms && request.platforms.length > 0 ? request.platforms : ['telegram']
+		);
 		// Create post object with user's chat_id
 		const post = {
 			id,
@@ -374,7 +432,7 @@ export function createApiRouter(storage: Storage, userStorage: UserStorage, sche
 			category: request.category,
 			tags: request.tags || [],
 			status: 'scheduled' as const,
-			platforms: (request.platforms && request.platforms.length > 0) ? request.platforms : ['telegram'] as Platform[],
+			platforms: platformsForPost as Platform[],
 			chat_id: chatId,
 			...(request.twitterCredentials && { twitterCredentials: request.twitterCredentials }),
 		};
