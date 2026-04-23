@@ -23,3 +23,8 @@ rm -f "$PUBLIC_DIR/$ARCHIVE_NAME"
 # Keep paths inside the zip so `examples/` ships with the plugin (tag reference for the vault)
 zip -r "$PUBLIC_DIR/$ARCHIVE_NAME" manifest.json main.js styles.css examples/
 echo "Created $PUBLIC_DIR/$ARCHIVE_NAME"
+
+# Express serves static files from telegram-bot/public (Vite emptyOutDir wipes it on landing build)
+mkdir -p "$ROOT/telegram-bot/public"
+cp "$PUBLIC_DIR/$ARCHIVE_NAME" "$ROOT/telegram-bot/public/$ARCHIVE_NAME"
+echo "Copied $ARCHIVE_NAME to telegram-bot/public/"

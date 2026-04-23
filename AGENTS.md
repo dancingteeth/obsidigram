@@ -67,7 +67,7 @@ The project uses a pnpm workspace with separate build processes:
 ### Workflows
 
 - **CI workflow** (`.github/workflows/ci.yml`): 
-  - Builds plugin, plugin archive, landing, bot
+  - Builds plugin, **landing** (writes `telegram-bot/public/`), **plugin archive** (zips plugin and copies `obsidigram-plugin.zip` into `telegram-bot/public/` for the site download), then bot
   - Runs on push/PR to `master` (path-filtered)
   - Verifies TypeScript compilation and build output
 - **Deploy workflow** (`.github/workflows/deploy.yml`):

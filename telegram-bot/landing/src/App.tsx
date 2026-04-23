@@ -139,7 +139,9 @@ function App() {
           </p>
         </div>
 
-        <footer className="card card-footer">dancingteeth · MIT</footer>
+        <footer className="card card-footer">
+          dancingteeth · MIT · v{__OBSIDIGRAM_LANDING_VERSION__}
+        </footer>
       </main>
     </>
   );

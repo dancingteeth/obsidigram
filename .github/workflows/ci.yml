@@ -57,11 +57,11 @@ jobs:
       - name: Build plugin
         run: pnpm --filter obsidigram run build
 
-      - name: Build plugin archive
-        run: pnpm run plugin-archive
-
       - name: Build landing
         run: pnpm --filter obsidigram-landing run build
+
+      - name: Build plugin archive
+        run: pnpm run plugin-archive
 
       - name: Build bot
         run: pnpm --filter obsidigram-bot run build

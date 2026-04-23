@@ -3,6 +3,7 @@ tags:
   - documentation
   - obsidigram
 ---
+
 # Obsidigram - Obsidian Plugin
 
 Turn your Obsidian vault into a headless CMS for Telegram. Monitor markdown files for readiness tags, schedule posts, and sync published status.
@@ -36,15 +37,15 @@ After install, the plugin folder contains **`examples/obsidigram-tag-reference.m
 
 1. Create or edit a markdown file
 2. Add the following tags in YAML frontmatter or in the body:
-   - `#tg_ready` - Marks the file as ready to schedule
-   - `#tg_unpublished` - Marks the file as not yet published
-   - One category tag:
-     - `#tg_research`— R
-     - `#tg_infrastructure_energy` — I
-     - `#tg_slop_misinformation` — S
-     - `#tg_security_fraud` — F
-     - `#tg_economy` — E
-     - `#tg_developer_ecosystem` — D
+  - `#tg_ready` - Marks the file as ready to schedule
+  - `#tg_unpublished` - Marks the file as not yet published
+  - One category tag:
+    - `#tg_research`— R
+    - `#tg_infrastructure_energy` — I
+    - `#tg_slop_misinformation` — S
+    - `#tg_security_fraud` — F
+    - `#tg_economy` — E
+    - `#tg_developer_ecosystem` — D
 3. Save the file
 4. The scheduling modal will automatically open
 5. Select a time slot from the calendar grid
@@ -53,6 +54,7 @@ After install, the plugin folder contains **`examples/obsidigram-tag-reference.m
 ### Tag System
 
 **Status Tags:**
+
 - `#tg_draft` - Work in progress
 - `#tg_ready` - Ready to be scheduled
 - `#tg_unpublished` - Not yet published (required with #tg_ready)
@@ -60,6 +62,7 @@ After install, the plugin folder contains **`examples/obsidigram-tag-reference.m
 - `#tg_published` - Already published (added automatically after sync)
 
 **Category Tags:**
+
 - `#tg_research`
 - `#tg_infrastructure_energy`
 - `#tg_slop_misinformation`

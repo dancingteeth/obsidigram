@@ -1,6 +1,6 @@
 {
 	"name": "obsidigram",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"packageManager": "pnpm@9.15.0",
 	"description": "Turn Obsidian into a headless CMS for Telegram",
 	"main": "main.js",

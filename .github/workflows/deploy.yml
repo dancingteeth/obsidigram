@@ -64,11 +64,11 @@ jobs:
             printf 'VITE_PUBLICATION_WEBSITE_URL=%s\n' "${URL}" > telegram-bot/landing/.env.production
           fi
 
-      - name: Build plugin archive (updates website download)
-        run: pnpm run plugin-archive
-
       - name: Build landing
         run: pnpm --filter obsidigram-landing run build
+
+      - name: Build plugin archive (updates website download)
+        run: pnpm run plugin-archive
 
       - name: Build bot
         run: pnpm --filter obsidigram-bot run build
