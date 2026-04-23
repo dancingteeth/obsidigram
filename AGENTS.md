@@ -42,6 +42,13 @@ obsidigram/
 └── package.json          # pnpm workspace root
 ```
 
+## Workspace layout (packages)
+
+- `obsidian-plugin/`: Obsidian plugin — watches note tags, opens scheduling UI, calls the bot API.
+- `telegram-bot/`: Express API, Telegram bot, cron scheduler, JSON persistence.
+- `telegram-bot/landing/`: Vite + React landing site (served with the bot’s static files in production).
+- `scripts/build-plugin-archive.sh`: Builds the plugin bundle and zips it to `telegram-bot/landing/public/obsidigram-plugin.zip` (and CI copies artifacts for deploy).
+
 ## Build Process
 
 The project uses a pnpm workspace with separate build processes:
@@ -105,6 +112,24 @@ If the variable is unset, the landing build uses the default URL defined in `tel
 - **Landing development**: `pnpm --filter obsidigram-landing run dev` (Vite dev server)
 - **Tests**: `pnpm --filter obsidigram-bot run test` (Vitest)
 - **Full build**: `pnpm run build` (builds all components)
+
+### Command reference (local + CI parity)
+
+Use from repo root unless noted.
+
+- **Install (locked)**: `pnpm install --frozen-lockfile`
+- **All workspace tests**: `pnpm -r run test`
+- **Bot tests only**: `pnpm --filter obsidigram-bot run test`
+- **Single bot test file**: `pnpm --filter obsidigram-bot run test -- test/storage.test.ts`
+- **Single bot test by name**: `pnpm --filter obsidigram-bot run test -- -t "adds and retrieves posts"`
+- **Lint**: there is no dedicated workspace lint script today; rely on TypeScript builds and tests.
+
+These mirror what CI builds for verification (do **not** rely on local runs for production deploy — push and use Actions):
+
+- `pnpm --filter obsidigram run build`
+- `pnpm run plugin-archive`
+- `pnpm --filter obsidigram-landing run build`
+- `pnpm --filter obsidigram-bot run build`
 
 ### Environment Variables
 
