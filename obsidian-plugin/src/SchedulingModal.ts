@@ -481,14 +481,19 @@ export class SchedulingModal extends Modal {
 					slotEl.style.color = 'white';
 					slotEl.style.fontWeight = 'bold';
 					// Build rich tooltip with category and content preview
-					const tooltip = `#tg_${slotInfo.category}\n\n${slotInfo.contentPreview}`;
+					const tooltip = `${this.categoryTagDisplay(slotInfo.category)}\n\n${slotInfo.contentPreview}`;
 					slotEl.setAttr('title', tooltip);
 				} else if (isPast) {
 					slotEl.setText('·');
 					slotEl.setAttr('title', 'Past');
 				} else {
 					slotEl.setText('○');
-					slotEl.setAttr('title', this.readOnly ? 'Available (open a note with #tg_ready + #tg_unpublished to schedule)' : 'Available');
+					slotEl.setAttr(
+						'title',
+						this.readOnly
+							? `Available (open a note with ${this.workflowReadyTag()} + ${this.workflowUnpublishedTag()} to schedule)`
+							: 'Available'
+					);
 					if (!this.readOnly) {
 						slotEl.addEventListener('click', () => {
 							this.selectSlot(day, timeSlot);
@@ -567,6 +572,23 @@ export class SchedulingModal extends Modal {
 			letter: categoryName.charAt(0).toUpperCase(),
 			color: '#888888', // Gray fallback
 		};
+	}
+
+	/** Workflow tag prefix for UI hints (matches FileWatcher / vault convention). */
+	private categoryWorkflowPrefix(): 'tg' | 'cms' {
+		return this.plugin.settings.useLegacyTags ? 'tg' : 'cms';
+	}
+
+	private categoryTagDisplay(category: string): string {
+		return `#${this.categoryWorkflowPrefix()}_${category}`;
+	}
+
+	private workflowReadyTag(): string {
+		return `#${this.categoryWorkflowPrefix()}_ready`;
+	}
+
+	private workflowUnpublishedTag(): string {
+		return `#${this.categoryWorkflowPrefix()}_unpublished`;
 	}
 
 	private renderQuickTimerPanel(container: HTMLElement): void {
@@ -654,7 +676,7 @@ export class SchedulingModal extends Modal {
 			});
 			categoryBadge.style.backgroundColor = categoryConfig.color;
 			
-			slotEl.setAttr('title', `${slot.time} - #tg_${slot.category}\n${slot.contentPreview}`);
+			slotEl.setAttr('title', `${slot.time} - ${this.categoryTagDisplay(slot.category)}\n${slot.contentPreview}`);
 		});
 	}
 

@@ -59,8 +59,21 @@ export function createApiRouter(storage: Storage, userStorage: UserStorage, sche
 
 			const platforms = scheduler.getConfiguredPlatforms();
 			const verified = await scheduler.verifyPlatforms();
+			// Show the subscriber's Telegram channel title (not the bot @username) in the plugin modal
+			const regUser = userStorage.getUserByApiKey(req.user!.apiKey);
+			const verifiedForClient = regUser
+				? verified.map((v) => {
+						if (v.platform === 'telegram' && v.valid) {
+							const channelLabel =
+								regUser.chatTitle?.trim() ||
+								(regUser.chatId ? `Telegram channel (${regUser.chatId})` : v.info);
+							return { ...v, info: channelLabel };
+						}
+						return v;
+					})
+				: verified;
 
-			res.json({ platforms, verified });
+			res.json({ platforms, verified: verifiedForClient });
 		} catch (error) {
 			console.error('[API] Error getting platforms:', error);
 			res.status(500).json({ 
