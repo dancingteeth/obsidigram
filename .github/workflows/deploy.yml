@@ -55,6 +55,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Landing publication URL (Vite)
+        run: |
+          set -euo pipefail
+          rm -f telegram-bot/landing/.env.production
+          URL="${{ vars.VITE_PUBLICATION_WEBSITE_URL }}"
+          if [ -n "${URL}" ]; then
+            printf 'VITE_PUBLICATION_WEBSITE_URL=%s\n' "${URL}" > telegram-bot/landing/.env.production
+          fi
+
       - name: Build plugin archive (updates website download)
         run: pnpm run plugin-archive
 

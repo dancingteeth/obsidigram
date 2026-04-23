@@ -3,6 +3,19 @@ import { KofiButton } from './KofiButton';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import './App.css';
 
+const DEFAULT_PUBLICATION_WEBSITE_URL = 'https://dancingteeth.substack.com';
+
+const publicationWebsiteUrl =
+	import.meta.env.VITE_PUBLICATION_WEBSITE_URL?.trim() || DEFAULT_PUBLICATION_WEBSITE_URL;
+
+function publicationWebsiteLabel(url: string): string {
+	try {
+		return new URL(url).hostname.replace(/^www\./, '');
+	} catch {
+		return 'the publication';
+	}
+}
+
 function App() {
   return (
     <>
@@ -33,9 +46,9 @@ function App() {
             <a href="https://t.me/thevacuumcleanergetssmart" target="_blank" rel="noopener noreferrer">
               The Vacuum Cleaner Gets Smart
             </a>
-            , a Telegram channel on AI and tech, straight from Obsidian. Also on{' '}
-            <a href="https://dancingteeth.substack.com" target="_blank" rel="noopener noreferrer">
-              Substack
+            , a Telegram channel on AI and tech, straight from Obsidian. Also at{' '}
+            <a href={publicationWebsiteUrl} target="_blank" rel="noopener noreferrer">
+              {publicationWebsiteLabel(publicationWebsiteUrl)}
             </a>
             .
           </p>

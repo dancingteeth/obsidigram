@@ -5,4 +5,5 @@ test-data/
 .env
 env.example
 *.log
+landing/.env.production
 

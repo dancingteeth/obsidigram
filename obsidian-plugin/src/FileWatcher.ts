@@ -3,6 +3,29 @@ import type ObsidigramPlugin from '../main';
 import type { Platform } from './types';
 import { DEFAULT_CATEGORIES } from './types';
 
+/** Normalize Obsidian frontmatter `tags` (array, comma-separated string, or single string). */
+function frontmatterTagsToStrings(raw: unknown): string[] {
+	if (raw == null) return [];
+	if (typeof raw === 'string') {
+		const s = raw.trim();
+		if (!s) return [];
+		return s.includes(',')
+			? s.split(',').map((t) => t.trim()).filter(Boolean)
+			: [s];
+	}
+	if (Array.isArray(raw)) {
+		return raw.map((t) => {
+			if (typeof t === 'string') return t;
+			if (t && typeof t === 'object' && 'tag' in t) {
+				const tagVal = (t as { tag?: string }).tag;
+				return typeof tagVal === 'string' ? tagVal : String(t);
+			}
+			return String(t);
+		});
+	}
+	return [];
+}
+
 export interface FileValidationResult {
 	isValid: boolean;
 	category?: string;
@@ -85,11 +108,8 @@ export class FileWatcher {
 			return { isValid: false };
 		}
 
-		// Check tags in frontmatter (YAML properties)
-		const frontmatterTags = cache.frontmatter?.tags || [];
-		const frontmatterTagStrings = Array.isArray(frontmatterTags) 
-			? frontmatterTags.map(t => typeof t === 'string' ? t : t.tag || String(t))
-			: [];
+		// Check tags in frontmatter (YAML properties — may be array or a single string in YAML)
+		const frontmatterTagStrings = frontmatterTagsToStrings(cache.frontmatter?.tags);
 
 		// Check tags in body (inline #tags from cache.tags)
 		const bodyTags = cache.tags?.map(t => t.tag) || [];
@@ -194,10 +214,7 @@ export class FileWatcher {
 		const cache = this.plugin.app.metadataCache.getFileCache(file);
 		if (!cache) return [];
 
-		const frontmatterTags = cache.frontmatter?.tags || [];
-		const frontmatterTagStrings = Array.isArray(frontmatterTags)
-			? frontmatterTags.map(t => typeof t === 'string' ? t : t.tag || String(t))
-			: [];
+		const frontmatterTagStrings = frontmatterTagsToStrings(cache.frontmatter?.tags);
 
 		const bodyTags = cache.tags?.map(t => t.tag) || [];
 		

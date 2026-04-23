@@ -81,6 +81,15 @@ For deployment to work, configure these in **Settings → Secrets and variables 
 
 See `telegram-bot/DEPLOYMENT.md` for detailed deployment setup.
 
+### Landing publication link (optional)
+
+The landing page “publication” outbound link is set at **build time** via Vite:
+
+- Add a repository **variable** (Settings → Secrets and variables → Actions → **Variables**): `VITE_PUBLICATION_WEBSITE_URL` (for example `https://dancingteeth.substack.com`).
+- CI and Deploy workflows write `telegram-bot/landing/.env.production` from this variable when present, so both the GitHub-hosted build and the on-server `vite build` use the same URL.
+
+If the variable is unset, the landing build uses the default URL defined in `telegram-bot/landing/src/App.tsx`.
+
 ## Development Workflow
 
 ### Setup
@@ -150,3 +159,36 @@ For detailed troubleshooting, see `telegram-bot/DEPLOYMENT.md`.
 ## To Build or Deploy
 
 Push to `master` and check [Actions](https://github.com/dancingteeth/obsidigram/actions), or trigger workflows manually.
+
+## Architecture (big picture)
+
+### End-to-end publishing flow
+
+1. User edits a note in Obsidian and adds workflow tags (supports legacy `tg_*` and newer `cms_*` patterns, plus platform-specific unpublished tags like `tg_unpublished`, `fb_unpublished`, `thr_unpublished`, `tw_unpublished`).
+2. `FileWatcher` (`obsidian-plugin/src/FileWatcher.ts`) listens to vault/metadata changes, validates tags/category, and opens `SchedulingModal`.
+3. `SchedulingModal` (`obsidian-plugin/src/SchedulingModal.ts`) fetches busy slots + available platforms from bot API, converts markdown to Telegram HTML, and schedules or publishes immediately.
+4. Plugin API calls go through `ApiClient` (`obsidian-plugin/src/ApiClient.ts`) with `Authorization: Bearer <apiKey>`.
+5. Bot API (`telegram-bot/src/api.ts`) authenticates API keys via `UserStorage`, scopes requests to the user’s `chat_id`, then stores posts in `Storage`.
+6. `Scheduler` (`telegram-bot/src/scheduler.ts`) runs every minute, publishes due posts through `MultiPlatformPublisher` (`telegram-bot/src/publishers/index.ts`), and updates per-platform results/status.
+7. Plugin sync (`syncPublishedPosts` in `obsidian-plugin/main.ts`) reads `/api/published` and updates note frontmatter/body tags to reflect published state.
+
+### Multi-tenant boundary
+
+- Tenant identity is API-key based, mapped to Telegram user + verified channel in `telegram-bot/src/users.ts`.
+- API routes never trust client `chat_id`; they derive channel scope from authenticated user.
+- Storage filters (`getScheduledPostsByChatId`, `getPublishedPostsByChatId`) enforce per-channel isolation.
+
+### Persistence model
+
+- Bot persistence is file-based JSON under `DATA_DIR` (default `./data`):
+  - `posts.json` via `Storage`
+  - `users.json` via `UserStorage`
+- Writes are atomic (`.tmp` + rename) with simple save coalescing.
+- Tests run with isolated `DATA_DIR` (`telegram-bot/vitest.config.ts` sets `test-data`) and disable file parallelism to avoid races.
+
+### Platform publishing model
+
+- Telegram is always available through the bot token.
+- Facebook/Threads are env-driven optional publishers.
+- X/Twitter supports both env credentials and per-request BYOK credentials from plugin settings.
+- Scheduler stores per-platform publish outcomes on each post (`platform_results`) and uses `partial` status when only some platforms succeed.
