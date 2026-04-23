@@ -235,6 +235,8 @@ export interface PublishedResponse {
 // Frontmatter type for processFrontMatter callback
 export interface FrontMatter {
 	tags?: (string | { tag: string })[];
+	/** If true, Obsidigram ignores this note for scheduling (tag reference / template kept in the vault). */
+	obsidigram_template?: boolean | string;
 	tg_scheduled_time?: string;
 	tg_published_time?: string;
 	cms_scheduled_time?: string;

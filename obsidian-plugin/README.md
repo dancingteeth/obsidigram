@@ -26,6 +26,10 @@ Turn your Obsidian vault into a headless CMS for Telegram. Monitor markdown file
 2. Configure your Bot API URL (e.g., `http://localhost:3001` or your server URL like `http://149.102.148.156:3001`)
 3. Customize time slots if needed (default: 09:00, 12:00, 15:00, 18:00, 21:00, 00:00)
 
+### Tag reference note (optional)
+
+After install, the plugin folder contains **`examples/obsidigram-tag-reference.md`**. Copy it into your vault (any folder). It lists all workflow and category hashtags so they stay in Obsidian’s tag index for autocomplete. The file uses `obsidigram_template: true` in YAML so **Obsidigram will not open the scheduler** on that note.
+
 ## Usage
 
 ### Scheduling a Post

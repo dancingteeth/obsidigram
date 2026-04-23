@@ -28,6 +28,10 @@ tags:
 
 Add exactly one per post. Examples: `#tg_research`, `#tg_infrastructure_energy`, `#tg_economy`. Configure custom categories in Settings → Obsidigram → Categories.
 
+### Tag reference note (autocomplete helper)
+
+Obsidigram removes `#tg_ready` / `#cms_ready` and unpublished tags when you schedule or publish, so those tags drop out of your vault until you add them again. To keep them in Obsidian’s tag list for autocomplete, copy **`examples/obsidigram-tag-reference.md`** from the plugin folder into your vault. It uses `obsidigram_template: true` so the scheduler ignores that file while the hashtags still count as tags.
+
 ## Scheduling Workflow
 
 1. **Draft** — Write your post, no special tags

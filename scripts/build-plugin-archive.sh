@@ -20,5 +20,6 @@ fi
 
 mkdir -p "$PUBLIC_DIR"
 rm -f "$PUBLIC_DIR/$ARCHIVE_NAME"
-zip -j "$PUBLIC_DIR/$ARCHIVE_NAME" manifest.json main.js styles.css
+# Keep paths inside the zip so `examples/` ships with the plugin (tag reference for the vault)
+zip -r "$PUBLIC_DIR/$ARCHIVE_NAME" manifest.json main.js styles.css examples/
 echo "Created $PUBLIC_DIR/$ARCHIVE_NAME"

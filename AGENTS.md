@@ -1,8 +1,10 @@
 ---
-tags:
-  - documentation
-  - obsidigram
----
+
+## tags:
+
+- documentation
+- obsidigram
+
 # AGENTS.md — Obsidigram
 
 > Agent instructions for the Obsidigram project (Obsidian plugin + Telegram bot CMS + Landing).
@@ -31,6 +33,7 @@ Obsidigram is a system that turns Obsidian into a headless CMS for multi-platfor
 ```
 obsidigram/
 ├── obsidian-plugin/      # Obsidian plugin source
+│   └── examples/         # Tag reference .md (bundled in plugin zip for users’ vaults)
 ├── telegram-bot/         # Telegram bot API server
 │   ├── src/              # TypeScript source (API & publishers)
 │   ├── public/           # Static assets
@@ -67,13 +70,11 @@ The project uses a pnpm workspace with separate build processes:
   - Builds plugin, plugin archive, landing, bot
   - Runs on push/PR to `master` (path-filtered)
   - Verifies TypeScript compilation and build output
-
 - **Deploy workflow** (`.github/workflows/deploy.yml`):
   - Deploys to server via SSH and rsync
   - Runs on successful CI or manual trigger
   - Builds Docker containers and starts services
   - Performs health checks via SSH
-
 - **Release workflow** (`.github/workflows/release.yml`):
   - Packages assets and creates a GitHub Release when a tag is pushed
 
@@ -81,10 +82,12 @@ The project uses a pnpm workspace with separate build processes:
 
 For deployment to work, configure these in **Settings → Secrets and variables → Actions**:
 
-| Secret | Description |
-|--------|-------------|
+
+| Secret            | Description                   |
+| ----------------- | ----------------------------- |
 | `SSH_PRIVATE_KEY` | Private key for server access |
-| `DEPLOY_HOST` | Server hostname or IP |
+| `DEPLOY_HOST`     | Server hostname or IP         |
+
 
 See `telegram-bot/DEPLOYMENT.md` for detailed deployment setup.
 
@@ -189,7 +192,7 @@ Push to `master` and check [Actions](https://github.com/dancingteeth/obsidigram/
 
 ### End-to-end publishing flow
 
-1. User edits a note in Obsidian and adds workflow tags (supports legacy `tg_*` and newer `cms_*` patterns, plus platform-specific unpublished tags like `tg_unpublished`, `fb_unpublished`, `thr_unpublished`, `tw_unpublished`).
+1. User edits a note in Obsidian and adds workflow tags (supports legacy `tg_`* and newer `cms_`* patterns, plus platform-specific unpublished tags like `tg_unpublished`, `fb_unpublished`, `thr_unpublished`, `tw_unpublished`).
 2. `FileWatcher` (`obsidian-plugin/src/FileWatcher.ts`) listens to vault/metadata changes, validates tags/category, and opens `SchedulingModal`.
 3. `SchedulingModal` (`obsidian-plugin/src/SchedulingModal.ts`) fetches busy slots + available platforms from bot API, converts markdown to Telegram HTML, and schedules or publishes immediately.
 4. Plugin API calls go through `ApiClient` (`obsidian-plugin/src/ApiClient.ts`) with `Authorization: Bearer <apiKey>`.
@@ -217,3 +220,4 @@ Push to `master` and check [Actions](https://github.com/dancingteeth/obsidigram/
 - Facebook/Threads are env-driven optional publishers.
 - X/Twitter supports both env credentials and per-request BYOK credentials from plugin settings.
 - Scheduler stores per-platform publish outcomes on each post (`platform_results`) and uses `partial` status when only some platforms succeed.
+

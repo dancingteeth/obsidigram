@@ -108,6 +108,12 @@ export class FileWatcher {
 			return { isValid: false };
 		}
 
+		// Reference / cheat-sheet notes: keep real #tags in the vault for autocomplete without opening the modal
+		const tmpl = cache.frontmatter?.obsidigram_template;
+		if (tmpl === true || tmpl === 'true' || tmpl === 'yes') {
+			return { isValid: false };
+		}
+
 		// Check tags in frontmatter (YAML properties — may be array or a single string in YAML)
 		const frontmatterTagStrings = frontmatterTagsToStrings(cache.frontmatter?.tags);
 
